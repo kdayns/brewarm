@@ -98,8 +98,12 @@ def sync(toTemp = False):
     t = '/tmp/' + config['active']
     if toTemp: shutil.copyfile(f, t)
     else:
-        shutil.copyfile(t, f + '_tmp')
-        shutil.move(f + '_tmp', f)
+        try:
+            shutil.copyfile(t, f + '_tmp')
+            shutil.move(f + '_tmp', f)
+        except:
+            print("temp not present")
+            pass
 
 def thread_temp():
     global config, csv, event, latest, lastSync
