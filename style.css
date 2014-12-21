@@ -1,0 +1,25 @@
+div#sensors {
+    width: auto;
+    height: auto;
+    background: #ccc;
+    border: 1px solid #aaa;
+    position: absolute;
+    z-index: 10;
+}
+div#circle {
+    float:left;
+    width:25px;
+    height:25px;
+    display: inline-block;
+    border-radius: 50%;
+    background: grey;
+}
+div#graph {
+    clear:both;
+    width:auto;
+    height:500px;
+}
+div#sensor_list {
+    padding: 10px;
+}
+

@@ -1,0 +1,29 @@
+<html><head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript" src="dygraph-combined.js"></script>
+<script type="text/javascript" src="jquery-git2.min.js"></script>
+<script type="text/javascript" src="byrei-dyndiv_1.0rc1.js"></script>
+<script type="text/javascript" src="json2.js"></script>
+</head><body>
+<div id="status" style="float:left;">unknown</div>
+<div id="circle"></div>
+<div id="brewnamediv" style="float:left;"><select id="brewname" onchange="brewChanged(this)"></select></div>
+<button id="start" style="float:left;" disabled=1 onclick="start()">start</button>
+<button id="stop" style="float:left;" disabled=1 onclick="stop()">stop</button>
+<label for="show_sensors" style="float:right">show sensors</label>
+<input type='checkbox' id="show_sensors" checked='1' style="float:right" onclick="toggleSensors(this)"/>
+<div id="labels" style="float:center;"></div>
+<div id="graph"></div>
+<div id="sensors" class="dynDiv_moveDiv">
+    <p style="padding: 1px; text-align: center; ">Sensors</p>
+    <table id="sensor_list" style="padding: 1px; cursor: auto;"></table>
+    <button id="save" style="" onclick="saveNames()">save</button>
+    <div class="dynDiv_resizeDiv_tl"></div>
+    <div class="dynDiv_resizeDiv_tr"></div>
+    <div class="dynDiv_resizeDiv_bl"></div>
+    <div class="dynDiv_resizeDiv_br"></div>
+</div>
+</body>
+<script type="text/javascript" src="brew.js"></script>
+</html>
