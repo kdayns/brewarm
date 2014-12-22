@@ -12,20 +12,21 @@ import threading;
 
 # config
 updateInterval  = 6
+decimate        = 4
 debug           = 1
 
+shutdown_pin    = 7
 datadir         = 'data'
 PORT_NUMBER     = 8080
 config = {
-    'sensors'   : { 'xxxx': ['name', 1, 2]},
+    'sensors'   : {}, #{ 'xxxx': ['name', 1, 2]},
     'brewfiles' : [],
     'active'    : 'test',
     'running'   : False,
 }
 
 # private
-#w1path = '/sys/bus/w1/devices/'
-w1path = '/sys/bus/usb/devices/'
+w1path = '/sys/bus/w1/devices/'
 name = 0
 curr = 1
 avg = 2
@@ -34,8 +35,20 @@ lock = threading.Lock()
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 
-def thread_update_temp(d):
-    # TODO - read sensor
+def thread_update_temp(k, d):
+    global decimate
+
+    for i in range(decimate):
+        try: val = open(w1path + k + '/w1_slave').read()
+        except:
+            print('read sensor %s failed: %s ' % (k, str(sys.exc_info()[0])))
+            continue
+        pos = val.find('t=')
+        v = float(val[pos + 2:]) / 1000
+        d[curr] = v
+        d[avg] += d[curr]
+
+    if debug: print("data: %s %s " % (k, v))
     return
 
 def thread_temp():
@@ -48,20 +61,27 @@ def thread_temp():
 
         rthreads = []
         for k,d in sensors.items():
-            th = threading.Thread(daemon=True, target=thread_update_temp, args=(d,))
+            th = threading.Thread(daemon=True, target=thread_update_temp, args=(k, d,))
             th.start()
             rthreads.append(th)
         lock.release()
 
-        for th in rthreads:
-            th.join()
+        for th in rthreads: th.join()
+
+        # TODO - write file
+
         if debug: print('waiting: ', updateInterval)
         threading.Event().wait(timeout=updateInterval)
 
 def thread_shutdown():
+    try: open('/sys/class/gpio/export', 'w').write(str(shutdown_pin))
+    except: print('export failed: ' + str(sys.exc_info()[0]))
+
     while True:
+        try: val = open('/sys/class/gpio%u/value' % shutdown_pin).readline().strip()
+        except: print('gpio open failed: ' + str(sys.exc_info()[0]))
         # TODO - monitor gpio
-        # /sys/class/gpio
+        #if val == '1': subprocess.call(['shutdown', '-h', 'now'])
         threading.Event().wait(timeout=1)
     return
 
