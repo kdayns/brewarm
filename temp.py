@@ -29,6 +29,7 @@ w1path = '/sys/bus/usb/devices/'
 name = 0
 curr = 1
 avg = 2
+lock = threading.Lock()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
@@ -42,7 +43,7 @@ def thread_temp():
     sensors = config['sensors']
 
     while True:
-        # TODO - lock sensors
+        lock.acquire()
         for k,d in sensors.items(): d[avg] = 0
 
         rthreads = []
@@ -50,6 +51,8 @@ def thread_temp():
             th = threading.Thread(daemon=True, target=thread_update_temp, args=(d,))
             th.start()
             rthreads.append(th)
+        lock.release()
+
         for th in rthreads:
             th.join()
         if debug: print('waiting: ', updateInterval)
@@ -73,10 +76,12 @@ def thread_discovery():
         for f in listdir(w1path):
             if f == 'w1_bus_master1': continue
 
-            if not f in sensors.items():
+            lock.acquire()
+            if not f in sensors.keys():
                 print("new sensor: " + f)
                 found = True
-                sensors['f'] = [ f, 0, 0]
+                sensors[f] = [ f, 0, 0]
+            lock.release()
         if found: open('config', 'w').write(json.dumps(config))
 
         # monitor data dir
