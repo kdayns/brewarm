@@ -1,11 +1,12 @@
 #!/bin/env python3
 
 import sys
+import io
 import json
 import time
 import http.server
 import socketserver
-from os import curdir, sep, listdir
+from os import curdir, sep, listdir, path
 import datetime;
 import subprocess;
 import threading;
@@ -19,21 +20,25 @@ shutdown_pin    = 7
 datadir         = 'data'
 PORT_NUMBER     = 8080
 config = {
-    'sensors'   : {}, #{ 'xxxx': ['name', 1, 2]},
+    'sensors'   : {},
     'brewfiles' : [],
-    'active'    : 'test',
+    'active'    : '',
     'running'   : False,
 }
 
 # private
+csv = None
 w1path = '/sys/bus/w1/devices/'
 name = 0
 curr = 1
 avg = 2
+enabled = 3
 lock = threading.Lock()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
+
+if path.isfile('config'): config = json.loads(open('config').read())
 
 def thread_update_temp(k, d):
     global decimate
@@ -52,8 +57,10 @@ def thread_update_temp(k, d):
     return
 
 def thread_temp():
-    global config
+    global config, csv
     sensors = config['sensors']
+    lastActive = ''
+    asens = []
 
     while True:
         lock.acquire()
@@ -68,7 +75,55 @@ def thread_temp():
 
         for th in rthreads: th.join()
 
-        # TODO - write file
+        # write file
+        if config['running'] == False:
+            asens = []
+            lastActive = ''
+            if csv != None:
+                csv.close()
+                csv = None
+        else:
+            if lastActive != config['active']:
+                if csv != None: csv.close()
+                try:
+                    csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
+                    if csv.tell():
+                        print('appending: ' + config['active'])
+                        csv.seek(0, io.SEEK_SET)
+                        l = csv.readline().strip()
+                        if l[:6] != '#date,': raise
+                        l = l[6:]
+                        csv.seek(0, io.SEEK_END)
+                        # TODO date recovery
+                        lock.acquire()
+                        for k,d in sensors.items():
+                            for s in l.split(','):
+                                if s == d[name]:
+                                    asens.append(k)
+                                    break
+                        lock.release()
+                    else:
+                        print('new data file: ' + config['active'])
+                        lock.acquire()
+                        for k,d in sensors.items():
+                            if d[enabled]: asens.append(k)
+                        lock.release()
+                        csv.write('#date')
+                        for s in asens: csv.write(',' + sensors[s][name])
+                        csv.write('\r\n')
+                    lastActive = config['active']
+                except:
+                    raise
+                    print('csv open failed: ' + str(sys.exc_info()[0]))
+                    if csv != None:
+                        csv.close()
+                        csv = None
+
+            if csv != None:
+                csv.write(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
+                for s in asens: csv.write(',' + str(sensors[s][avg] / decimate))
+                csv.write('\r\n')
+                csv.flush()
 
         if debug: print('waiting: ', updateInterval)
         threading.Event().wait(timeout=updateInterval)
@@ -100,12 +155,14 @@ def thread_discovery():
             if not f in sensors.keys():
                 print("new sensor: " + f)
                 found = True
-                sensors[f] = [ f, 0, 0]
+                sensors[f] = [ f, 0, 0, True]
             lock.release()
         if found: open('config', 'w').write(json.dumps(config))
 
         # monitor data dir
         for f in listdir('data'):
+            if not f.endswith('.csv'): continue
+            f = f[:-4]
             if not f in brews: brews.append(f)
 
         threading.Event().wait(timeout=5)
@@ -120,11 +177,24 @@ class myHandler(http.server.BaseHTTPRequestHandler):
             else: print('Unknown error: %s' % sys.exc_info()[0])
 
     def do_POST(self):
+        global config
         varLen = int(self.headers['Content-Length'])
         postVars = str(self.rfile.read(varLen), 'utf-8')
-        if debug:
-            if len(postVars): print('post: ' + postVars)
-            print(json.dumps(config))
+        if len(postVars):
+            if debug:
+                print('post: ' + postVars)
+                print('config: ' + json.dumps(config))
+            nc = json.loads(postVars)
+            lock.acquire()
+            for k,v in nc.items():
+                if config['sensors'][k][name] != v: config['sensors'][k][name] = v
+            lock.release()
+            if 'active' in nc: config['active'] = nc['active']
+            if 'running' in nc: config['running'] = nc['running']
+            # TODO - new brew creation
+            config['active'] = 'xxx'
+            config['running'] = True
+            open('config', 'w').write(json.dumps(config))
 
         self.send_response(200)
         self.end_headers()
