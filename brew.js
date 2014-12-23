@@ -1,5 +1,4 @@
 // TODO
-// auto date recovery
 // new brew
 // date setting
 //

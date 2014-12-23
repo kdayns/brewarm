@@ -2,6 +2,7 @@
 
 import sys
 import io
+import os
 import json
 import time
 import http.server
@@ -37,6 +38,7 @@ lock = threading.Lock()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
+os.chdir('/root/brewarm')
 
 if path.isfile('config'): config = json.loads(open('config').read())
 if path.isfile('.clean_shutdown'):
@@ -46,6 +48,7 @@ if path.isfile('.clean_shutdown'):
 def thread_update_temp(k, d):
     global decimate
 
+    v = None
     for i in range(decimate):
         try: val = open(w1path + k + '/w1_slave').read()
         except:
@@ -56,6 +59,7 @@ def thread_update_temp(k, d):
         d[curr] = v
         d[avg] += d[curr]
 
+    if v == None: v = 0
     if debug: print("data: %s %s " % (k, v))
     return
 
@@ -90,14 +94,14 @@ def thread_temp():
                 if csv != None: csv.close()
                 try:
                     csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
-                    if csv.tell():
+                    size = csv.tell()
+                    if size:
                         print('appending: ' + config['active'])
+                        # get used sensors
                         csv.seek(0, io.SEEK_SET)
                         l = csv.readline().strip()
                         if l[:6] != '#date,': raise
                         l = l[6:]
-                        csv.seek(0, io.SEEK_END)
-                        # TODO date recovery
                         lock.acquire()
                         for k,d in sensors.items():
                             for s in l.split(','):
@@ -105,6 +109,19 @@ def thread_temp():
                                     asens.append(k)
                                     break
                         lock.release()
+                        # date recovery
+                        csv.seek(size - min(128, size), io.SEEK_SET)
+                        tail = csv.read(128)
+                        if len(tail) > 5 and tail.rfind('\n', 0, -2) != -1:
+                            tail = tail[tail.rfind('\n', 0, -2) + 1:].strip()
+                            if debug: print('tail: ' + tail)
+                            tail = tail[:tail.find(',')]
+                            last = datetime.datetime.strptime(tail, '%Y/%m/%d %H:%M:%S')
+                            if debug: print('last: ' + str(last))
+                            if last > datetime.datetime.now():
+                                print('time adjust')
+                                subprocess.call(['date', '-s', tail])
+                        csv.seek(0, io.SEEK_END)
                     else:
                         print('new data file: ' + config['active'])
                         lock.acquire()
@@ -113,7 +130,7 @@ def thread_temp():
                         lock.release()
                         csv.write('#date')
                         for s in asens: csv.write(',' + sensors[s][name])
-                        csv.write('\r\n')
+                        csv.write('\r')
                     lastActive = config['active']
                 except:
                     raise
