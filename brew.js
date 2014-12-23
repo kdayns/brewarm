@@ -1,8 +1,10 @@
 // TODO
 // auto date recovery
+// new brew
+// date setting
+//
 // sensors focus
 // fix js legend
-// date setting
 // update interval
 // new/start/stop
 // annotations

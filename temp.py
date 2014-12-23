@@ -12,13 +12,13 @@ import subprocess;
 import threading;
 
 # config
-updateInterval  = 6
 decimate        = 4
+updateInterval  = 60 - decimate # seading sensor takes ~1s
 debug           = 1
 
 shutdown_pin    = 7
 datadir         = 'data'
-PORT_NUMBER     = 8080
+PORT_NUMBER     = 80
 config = {
     'sensors'   : {},
     'brewfiles' : [],
@@ -39,6 +39,9 @@ subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 
 if path.isfile('config'): config = json.loads(open('config').read())
+if path.isfile('.clean_shutdown'):
+    #config['running'] = False
+    os.remove('.clean_shutdown')
 
 def thread_update_temp(k, d):
     global decimate
@@ -133,10 +136,13 @@ def thread_shutdown():
     except: print('export failed: ' + str(sys.exc_info()[0]))
 
     while True:
-        try: val = open('/sys/class/gpio%u/value' % shutdown_pin).readline().strip()
+        try: val = open('/sys/class/gpio/gpio%u/value' % shutdown_pin).read().strip()
         except: print('gpio open failed: ' + str(sys.exc_info()[0]))
-        # TODO - monitor gpio
-        #if val == '1': subprocess.call(['shutdown', '-h', 'now'])
+        if val == '1':
+            print('shutdown')
+            open('.clean_shutdown', 'w').close()
+            subprocess.call(['shutdown', '-h', 'now'])
+            return;
         threading.Event().wait(timeout=1)
     return
 
