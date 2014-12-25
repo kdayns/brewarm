@@ -37,6 +37,7 @@ function updateStatus(firstTime = false) {
             });
             if (!found) $('#brewname').append('<option>' + bf + '</option>');
         }
+        s['running'] ? start() : stop();
         if (s["active"] != activeBrew) {
             activeBrew = s["active"];
             if (firstTime) {
@@ -124,13 +125,13 @@ function showLastDays() {
 }
 function start() {
     $('#circle').css('background', 'green');
-    $('#start').attr("disabled", true);
-    $('#stop').removeAttr("disabled");
+    //$('#start').attr("disabled", true);
+    //$('#stop').removeAttr("disabled");
 }
 function stop() {
     $('#circle').css('background', 'red');
-    $('#stop').attr("disabled", true);
-    $('#start').removeAttr("disabled");
+    //$('#stop').attr("disabled", true);
+    //$('#start').removeAttr("disabled");
 }
 function brewChanged(e) {
     loadBrew(e.value);
