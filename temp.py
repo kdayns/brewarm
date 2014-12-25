@@ -14,7 +14,6 @@ import threading;
 
 # config
 decimate        = 4
-updateInterval  = 60 - decimate # seading sensor takes ~1s
 debug           = 1
 
 shutdown_pin    = 7
@@ -152,8 +151,8 @@ def thread_temp():
                 csv.write('\n')
                 csv.flush()
 
-        if debug: print('waiting: ', updateInterval)
-        event.wait(timeout=updateInterval)
+        if debug: print('waiting: ', config['update'])
+        event.wait(timeout=config['update'])
         event.clear()
 
 def thread_shutdown():
@@ -224,12 +223,20 @@ class myHandler(http.server.BaseHTTPRequestHandler):
                 lock.release()
             if 'active' in nc: config['active'] = nc['active']
             if 'running' in nc: config['running'] = nc['running']
+            if 'update' in nc: config['update'] = int(nc['update'])
+            if 'date' in nc:
+                try:
+                    datetime.datetime.strptime(nc['date'], '%Y/%m/%d %H:%M:%S')
+                    subprocess.call(['date', '-s', nc['date']])
+                except: print('bad date passed: ' + nc['date'])
             update_config()
             event.set()
 
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(bytearray(json.dumps(config), 'utf-8'))
+        status = config
+        status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+        self.wfile.write(bytearray(json.dumps(status), 'utf-8'))
 
     def do_GET(self):
         if self.path=="/": self.path="/index.html"

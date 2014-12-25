@@ -12,14 +12,17 @@
 <div id="brewnamediv" style="float:left;"><select id="brewname" onchange="brewChanged(this)"></select></div>
 <button id="start" style="float:left;" disabled=1 onclick="start()">start</button>
 <button id="stop" style="float:left;" disabled=1 onclick="stop()">stop</button>
-<label for="show_sensors" style="float:right">show sensors</label>
-<input type='checkbox' id="show_sensors" checked='1' style="float:right" onclick="toggleSensors(this)"/>
+<label for="show_config" style="float:right">config</label>
+<input type='checkbox' id="show_config" style="float:right" onclick="toggleConfig(this)"/>
 <div id="labels" style="float:center;"></div>
 <div id="graph"></div>
-<div id="sensors" class="dynDiv_moveDiv">
-    <p style="padding: 1px; text-align: center; ">Sensors</p>
+<div id="config" class="dynDiv_moveDiv">
+    <p style="padding: 1px; text-align: center; ">config</p>
+    update interval <input type=text id=update />
+    <br>
+    date <input type=text id=date value=10 />
     <table id="sensor_list" style="padding: 1px; cursor: auto;"></table>
-    <button id="save" style="" onclick="saveNames()">save</button>
+    <button id="save" style="" onclick="saveConfig()">save</button>
     <div class="dynDiv_resizeDiv_tl"></div>
     <div class="dynDiv_resizeDiv_tr"></div>
     <div class="dynDiv_resizeDiv_bl"></div>
