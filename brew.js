@@ -1,11 +1,9 @@
 // TODO
-// new brew
 // date setting
-//
+// update interval
+// start/stop
 // sensors focus
 // fix js legend
-// update interval
-// new/start/stop
 // annotations
 
 var graphInterval = 60;
@@ -59,9 +57,12 @@ function updateStatus(firstTime = false) {
                  }
             });
             if (!found) $('#sensor_list').append(
-                    '<tr><td class=id>' + si + '</td>'
+                    '<tr>'
+                    + '<td class=enabled><input type=checkbox class=enabled ' + (sensor[3] ? 'checked=1' : '') + '/></td>'
+                    + '<td class=id>' + si + '</td>'
                     + '<td class=value><b>' + sensor[1] + '</b></td>'
-                    + '<td><input class=name type=text value="' + sensor[0] + '"></td></tr>')
+                    + '<td><input class=name type=text value="' + sensor[0] + '"></td>'
+                    + '</tr>')
         }
     });//.fail(function( jqXHR, textStatus, errorThrown ) { alert(textStatus); });;
 }
@@ -69,13 +70,36 @@ function updateStatus(firstTime = false) {
 function toggleSensors(el) { $('#sensors').toggle(el.checked); }
 function visibilityChange(el) { g.setVisibility(el.id, el.checked); }
 function tryShowLastDays() { if (!showLastDays()) setTimeout(tryShowLastDays, 10); }
+function newBrew() {
+    var found = false;
+    var table = document.getElementById("sensor_list");
+    for (var i = 0, row; row = table.rows[i]; i++) {
+        if (row.cells[0].getElementsByClassName('enabled')[0].checked) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        alert('no sensors selected');
+        return;
+    }
+
+    data = {}
+    var name = prompt("new brew's name", 'brew_XX');
+    data['active'] = name;
+    data['running'] = true;
+    $.post('status', JSON.stringify(data));
+}
 function saveNames() {
     var data = {};
     var table = document.getElementById("sensor_list");
     for (var i = 0, row; row = table.rows[i]; i++) {
-        data[row.cells[0].innerHTML] = row.cells[2].getElementsByClassName('name')[0].value;
+        data[row.cells[1].innerHTML] = [
+            row.cells[3].getElementsByClassName('name')[0].value,
+            row.cells[0].getElementsByClassName('enabled')[0].checked,
+            ];
     }
-    $.post('status', JSON.stringify(data));
+    $.post('status', JSON.stringify({ 'sensors': data }));
 }
 function showLastDays() {
     if (!lastDays) return;

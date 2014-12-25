@@ -25,6 +25,7 @@ config = {
     'brewfiles' : [],
     'active'    : '',
     'running'   : False,
+    'update'    : 60,
 }
 
 # private
@@ -35,6 +36,7 @@ curr = 1
 avg = 2
 enabled = 3
 lock = threading.Lock()
+event = threading.Event()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
@@ -43,7 +45,11 @@ os.chdir('/root/brewarm')
 if path.isfile('config'): config = json.loads(open('config').read())
 if path.isfile('.clean_shutdown'):
     #config['running'] = False
+    update_config()
     os.remove('.clean_shutdown')
+
+def update_config():
+    open('config', 'w').write(json.dumps(config, indent=True))
 
 def thread_update_temp(k, d):
     global decimate
@@ -64,7 +70,7 @@ def thread_update_temp(k, d):
     return
 
 def thread_temp():
-    global config, csv
+    global config, csv, event
     sensors = config['sensors']
     lastActive = ''
     asens = []
@@ -91,6 +97,7 @@ def thread_temp():
                 csv = None
         else:
             if lastActive != config['active']:
+                asens = []
                 if csv != None: csv.close()
                 try:
                     csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
@@ -123,14 +130,14 @@ def thread_temp():
                                 subprocess.call(['date', '-s', tail])
                         csv.seek(0, io.SEEK_END)
                     else:
-                        print('new data file: ' + config['active'])
                         lock.acquire()
                         for k,d in sensors.items():
                             if d[enabled]: asens.append(k)
                         lock.release()
+                        print('new data file: ' + config['active'] + ' sensors: ' + str(len(asens)))
                         csv.write('#date')
                         for s in asens: csv.write(',' + sensors[s][name])
-                        csv.write('\r')
+                        csv.write('\n')
                     lastActive = config['active']
                 except:
                     raise
@@ -142,11 +149,12 @@ def thread_temp():
             if csv != None:
                 csv.write(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
                 for s in asens: csv.write(',' + str(sensors[s][avg] / decimate))
-                csv.write('\r\n')
+                csv.write('\n')
                 csv.flush()
 
         if debug: print('waiting: ', updateInterval)
-        threading.Event().wait(timeout=updateInterval)
+        event.wait(timeout=updateInterval)
+        event.clear()
 
 def thread_shutdown():
     try: open('/sys/class/gpio/export', 'w').write(str(shutdown_pin))
@@ -180,7 +188,7 @@ def thread_discovery():
                 found = True
                 sensors[f] = [ f, 0, 0, True]
             lock.release()
-        if found: open('config', 'w').write(json.dumps(config))
+        if found: update_config()
 
         # monitor data dir
         for f in listdir('data'):
@@ -200,24 +208,24 @@ class myHandler(http.server.BaseHTTPRequestHandler):
             else: print('Unknown error: %s' % sys.exc_info()[0])
 
     def do_POST(self):
-        global config
+        global config, event
         varLen = int(self.headers['Content-Length'])
         postVars = str(self.rfile.read(varLen), 'utf-8')
         if len(postVars):
             if debug:
-                print('post: ' + postVars)
                 print('config: ' + json.dumps(config))
+                print('post: ' + postVars)
             nc = json.loads(postVars)
-            lock.acquire()
-            for k,v in nc.items():
-                if config['sensors'][k][name] != v: config['sensors'][k][name] = v
-            lock.release()
+            if 'sensors' in nc:
+                lock.acquire()
+                for k,v in nc['sensors'].items():
+                    if config['sensors'][k][name] != v[0]: config['sensors'][k][name] = v[0]
+                    if config['sensors'][k][enabled] != v[1]: config['sensors'][k][enabled] = v[1]
+                lock.release()
             if 'active' in nc: config['active'] = nc['active']
             if 'running' in nc: config['running'] = nc['running']
-            # TODO - new brew creation
-            config['active'] = 'xxx'
-            config['running'] = True
-            open('config', 'w').write(json.dumps(config))
+            update_config()
+            event.set()
 
         self.send_response(200)
         self.end_headers()
