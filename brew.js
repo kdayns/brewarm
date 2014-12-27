@@ -22,11 +22,15 @@ updateStatus(true);
 
 function updateStatus(firstTime = false) {
     $.post('status', function(data) {
-        if (!data.length) return; // TODO - handle bad data
-        if (data[0] != '{') {
-            alert(data);
+        if (!data.length) {
+            console.log('no status data recv');
             return;
         }
+        if (data[0] != '{') {
+            document.getElementById("status").innerHTML = data;
+            return;
+        }
+        document.getElementById("status").innerHTML = '';
         var s = JSON.parse(data);
         var brewnames = $('#brewname  > option');
         for (var bi = 0; bi < s["brewfiles"].length; ++bi) {

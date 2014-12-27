@@ -41,14 +41,13 @@ subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 os.chdir('/root/brewarm')
 
+def update_config(): open('config', 'w').write(json.dumps(config, indent=True))
+
 if path.isfile('config'): config = json.loads(open('config').read())
 if path.isfile('.clean_shutdown'):
     #config['running'] = False
     update_config()
     os.remove('.clean_shutdown')
-
-def update_config():
-    open('config', 'w').write(json.dumps(config, indent=True))
 
 def thread_update_temp(k, d):
     global decimate
@@ -61,7 +60,7 @@ def thread_update_temp(k, d):
             continue
         pos = val.find('t=')
         v = float(val[pos + 2:]) / 1000
-        d[curr] = v
+        d[curr] = round(v, 3)
         d[avg] += d[curr]
 
     if v == None: v = 0
@@ -147,7 +146,7 @@ def thread_temp():
 
             if csv != None:
                 csv.write(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
-                for s in asens: csv.write(',' + str(sensors[s][avg] / decimate))
+                for s in asens: csv.write(',' + str(round(sensors[s][avg] / decimate, 3)))
                 csv.write('\n')
                 csv.flush()
 
@@ -187,7 +186,9 @@ def thread_discovery():
                 found = True
                 sensors[f] = [ f, 0, 0, True]
             lock.release()
-        if found: update_config()
+        if found:
+            update_config()
+            event.set()
 
         # monitor data dir
         for f in listdir('data'):
