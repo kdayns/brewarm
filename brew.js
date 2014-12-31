@@ -113,6 +113,10 @@ function saveConfig() {
             };
     $.post('status', JSON.stringify(data));
 }
+function shutdown(reboot) {
+    if (!confirm('really shutdown/reboot ?')) return;
+    $.post('status', JSON.stringify({ 'command': reboot ? 'reboot' : 'shutdown' }));
+}
 function showLastDays() {
     if (!lastDays) return;
 

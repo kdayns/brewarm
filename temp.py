@@ -216,6 +216,16 @@ class myHandler(http.server.BaseHTTPRequestHandler):
                 print('config: ' + json.dumps(config))
                 print('post: ' + postVars)
             nc = json.loads(postVars)
+            if 'command' in nc:
+                cmd = nc['command']
+                print(cmd)
+                if cmd == 'shutdown' or cmd == 'reboot':
+                    open('.clean_shutdown', 'w').close()
+                    if cmd == 'shutdown': subprocess.call(['shutdown', '-h', 'now'])
+                    else: subprocess.call(['reboot'])
+                self.send_response(200)
+                self.end_headers()
+                return;
             if 'sensors' in nc:
                 lock.acquire()
                 for k,v in nc['sensors'].items():
