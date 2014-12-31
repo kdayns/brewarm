@@ -16,11 +16,11 @@
 <input type='checkbox' id="show_config" style="float:right" onclick="toggleConfig(this)"/>
 <div id="labels" style="float:center;"></div>
 <div id="graph"></div>
-<div id="config" class="dynDiv_moveDiv">
-    <p style="padding: 1px; text-align: center; ">config</p>
-    update interval <input type=text id=update />
+<div id="config">
+    <div class="dynDiv_moveParentDiv dynDiv_bodyLimit" style="float:clear; padding:10px; background:purple;" ></div>
+    update interval <input type=text id=update style='float:rigth;'/>
     <br>
-    date <input type=text id=date value=10 />
+    date <input type=text id=date value=10 style='float:rigth;'/>
     <table id="sensor_list" style="padding: 1px; cursor: auto;"></table>
     <button id="save" style="" onclick="saveConfig()">save</button>
     <div class="dynDiv_resizeDiv_tl"></div>
