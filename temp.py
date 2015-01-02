@@ -57,7 +57,9 @@ def thread_update_temp(k, d):
         try: val = open(w1path + k + '/w1_slave').read()
         except:
             print('read sensor %s failed: %s ' % (k, str(sys.exc_info()[0])))
-            continue
+            d[curr] = 0
+            d[avg] = 0
+            return
         pos = val.find('t=')
         v = float(val[pos + 2:]) / 1000
         d[curr] = round(v, 3)
@@ -108,8 +110,8 @@ def thread_temp():
                         if l[:6] != '#date,': raise
                         l = l[6:]
                         lock.acquire()
-                        for k,d in sensors.items():
-                            for s in l.split(','):
+                        for s in l.split(','):
+                            for k,d in sensors.items():
                                 if s == d[name]:
                                     asens.append(k)
                                     break

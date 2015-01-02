@@ -56,7 +56,7 @@ function updateStatus(firstTime = false) {
             $("#sensor_list td.id").each(function(i, tr) {
                  if ($(tr).html() == si) {
                      found = true;
-                     $("#sensor_list td.value").eq(i).text(sensor[1]);
+                     $("#sensor_list td.value").eq(i).html('<b>' + sensor[1] + '</b>');
                  }
             });
             if (!found) $('#sensor_list').append(
