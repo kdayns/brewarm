@@ -9,7 +9,8 @@
 <div id="status" style="float:left;">unknown</div>
 <div id="circle"></div>
 <button id="add" style="float:left;" onclick="newBrew()">+</button>
-<div id="brewnamediv" style="float:left;"><select id="brewname" onchange="brewChanged(this)"></select></div>
+<button id="remove" style="float:left;" onclick="removeBrew()">-</button>
+<div id="brewnamediv" style="float:left;"><select id="brewname" onchange="brewChanged(this.value)"></select></div>
 <button id="start" style="float:left;" disabled=1 onclick="start()">start</button>
 <button id="stop" style="float:left;" disabled=1 onclick="stop()">stop</button>
 <label for="show_config" style="float:right">config</label>

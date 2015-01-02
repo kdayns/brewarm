@@ -1,6 +1,7 @@
 #!/bin/env python3
 
 import sys
+import copy
 import io
 import os
 import json
@@ -21,7 +22,6 @@ datadir         = 'data'
 PORT_NUMBER     = 80
 config = {
     'sensors'   : {},
-    'brewfiles' : [],
     'active'    : '',
     'running'   : False,
     'update'    : 60,
@@ -41,9 +41,17 @@ subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 os.chdir('/root/brewarm')
 
-def update_config(): open('config', 'w').write(json.dumps(config, indent=True))
+def update_config():
+    configx = copy.deepcopy(config)
+    print(json.dumps(configx, indent=True))
+    del configx['brewfiles']
+    del configx['date']
+    open('config', 'w').write(json.dumps(configx, indent=True))
 
-if path.isfile('config'): config = json.loads(open('config').read())
+if path.isfile('config'):
+    config = json.loads(open('config').read())
+    config['brewfiles'] = []
+
 if path.isfile('.clean_shutdown'):
     #config['running'] = False
     update_config()
@@ -225,6 +233,10 @@ class myHandler(http.server.BaseHTTPRequestHandler):
                     open('.clean_shutdown', 'w').close()
                     if cmd == 'shutdown': subprocess.call(['shutdown', '-h', 'now'])
                     else: subprocess.call(['reboot'])
+                if cmd == 'kill':
+                    os.remove('data/' + nc['name'] + '.csv')
+                    for b in config['brewfiles']:
+                        if b == nc['name']: config['brewfiles'].remove(b)
                 self.send_response(200)
                 self.end_headers()
                 return;

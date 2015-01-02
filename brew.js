@@ -1,6 +1,8 @@
 // TODO
 // start/stop
-// sensors focus
+// lcd
+// sensor min/max
+// realtime update
 // fix js legend
 // annotations
 
@@ -77,6 +79,30 @@ function updateStatus(firstTime = false) {
 function toggleConfig(el) { $('#config').toggle(el.checked); }
 function visibilityChange(el) { g.setVisibility(el.id, el.checked); }
 function tryShowLastDays() { if (!showLastDays()) setTimeout(tryShowLastDays, 10); }
+function removeBrew() {
+    var select = document.getElementById("brewname");
+    if (!select.length) return;
+
+    var n = select.options[select.selectedIndex].text;
+    if (n == activeBrew) {
+        alert('can\'t remove active brew!');
+        return;
+    }
+    if (!confirm('really remove ' + n + '?')) return;
+
+    select.remove(select.selectedIndex);
+    if (select.length) {
+        select.selectedIndex = 0;
+        brewChanged(select.options[0].text);
+    } else {
+        $('#stop').attr("disabled", true);
+        $('#start').attr("disabled", true);
+        $('#circle').css('background', 'grey');
+        g.updateOptions( { dateWindow : null });
+        // TODO - clear graph
+    }
+    $.post('status', JSON.stringify({ 'command': 'kill', 'name': n }));
+}
 function newBrew() {
     var found = false;
     var table = document.getElementById("sensor_list");
@@ -142,8 +168,8 @@ function stop() {
     //$('#start').removeAttr("disabled");
 }
 function brewChanged(e) {
-    loadBrew(e.value);
-    if (e.value != activeBrew) {
+    loadBrew(e);
+    if (e != activeBrew) {
         $('#stop').attr("disabled", true);
         $('#start').attr("disabled", true);
         $('#circle').css('background', 'grey');
