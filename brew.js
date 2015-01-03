@@ -1,5 +1,4 @@
 // TODO
-// start/stop
 // lcd
 // sensor min/max
 // realtime update
@@ -11,6 +10,7 @@ var statusInterval = 5;
 var lastDays = 24 * 3600 * 3; // zoom on last days data
 
 // private
+var running = false;
 var bn = '';
 var interval = null;
 var activeBrew = null;
@@ -23,7 +23,12 @@ var g = new Dygraph(document.getElementById("graph"), "", {
 updateStatus(true);
 
 function updateStatus(firstTime = false) {
-    $.post('status', function(data) {
+    recvStatus.firstTime = firstTime;
+    $.post('status', recvStatus);
+    //.fail(function( jqXHR, textStatus, errorThrown ) { alert(textStatus); });;
+}
+
+function recvStatus(data) {
         if (!data.length) {
             console.log('no status data recv');
             return;
@@ -43,14 +48,15 @@ function updateStatus(firstTime = false) {
             });
             if (!found) $('#brewname').append('<option>' + bf + '</option>');
         }
-        s['running'] ? start() : stop();
+        running = s['running'];
         if (s["active"] != activeBrew) {
             activeBrew = s["active"];
-            if (firstTime) {
+            if (recvStatus.firstTime) {
                 loadBrew(activeBrew);
                 $('#brewname').val(activeBrew);
             }
         }
+        updateRunning();
         var sensors = s["sensors"];
         for (var si in sensors) {
             var sensor = sensors[si];
@@ -73,17 +79,36 @@ function updateStatus(firstTime = false) {
         if (!u.is(':focus')) u.val(s['update']);
         var d = $('#date');
         if (!d.is(':focus')) d.val(s['date']);
-    });//.fail(function( jqXHR, textStatus, errorThrown ) { alert(textStatus); });;
 }
 
 function toggleConfig(el) { $('#config').toggle(el.checked); }
 function visibilityChange(el) { g.setVisibility(el.id, el.checked); }
 function tryShowLastDays() { if (!showLastDays()) setTimeout(tryShowLastDays, 10); }
-function removeBrew() {
+function updateRunning() {
+    if (getSelectedName() != activeBrew) {
+        $('#stop').attr("disabled", true);
+        $('#start').attr("disabled", true);
+        $('#circle').css('background', 'grey');
+        return;
+    }
+    if (running) {
+        $('#start').attr("disabled", true);
+        $('#stop').removeAttr("disabled");
+        $('#circle').css('background', 'green');
+    } else {
+        $('#start').removeAttr("disabled");
+        $('#stop').attr("disabled", true);
+        $('#circle').css('background', 'red');
+    }
+}
+function getSelectedName() {
     var select = document.getElementById("brewname");
-    if (!select.length) return;
-
-    var n = select.options[select.selectedIndex].text;
+    if (!select.length) return '';
+    return select.options[select.selectedIndex].text;
+}
+function removeBrew() {
+    var n = getSelectedName();
+    if (!n.length) return;
     if (n == activeBrew) {
         alert('can\'t remove active brew!');
         return;
@@ -158,25 +183,15 @@ function showLastDays() {
     return true;
 }
 function start() {
-    $('#circle').css('background', 'green');
-    //$('#start').attr("disabled", true);
-    //$('#stop').removeAttr("disabled");
+    $.post('status', JSON.stringify({ 'running': true }), recvStatus);
 }
 function stop() {
-    $('#circle').css('background', 'red');
-    //$('#stop').attr("disabled", true);
-    //$('#start').removeAttr("disabled");
+    $.post('status', JSON.stringify({ 'running': false }), recvStatus);
 }
 function brewChanged(e) {
     loadBrew(e);
-    if (e != activeBrew) {
-        $('#stop').attr("disabled", true);
-        $('#start').attr("disabled", true);
-        $('#circle').css('background', 'grey');
-        g.updateOptions( { dateWindow : null });
-    } else {
-        // TODO
-    }
+    updateRunning();
+    if (e != activeBrew) g.updateOptions( { dateWindow : null });
 }
 function loadBrew(bn) {
     bn = 'data/' + bn + '.csv';

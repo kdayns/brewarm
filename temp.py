@@ -53,7 +53,7 @@ if path.isfile('config'):
     config['brewfiles'] = []
 
 if path.isfile('.clean_shutdown'):
-    #config['running'] = False
+    config['running'] = False
     update_config()
     os.remove('.clean_shutdown')
 
@@ -210,6 +210,13 @@ def thread_discovery():
     return
 
 class myHandler(http.server.BaseHTTPRequestHandler):
+    def sendStatus(self):
+        self.send_response(200)
+        self.end_headers()
+        status = config
+        status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+        self.wfile.write(bytearray(json.dumps(status), 'utf-8'))
+
     def handle_one_request(self):
         try:
             http.server.BaseHTTPRequestHandler.handle_one_request(self)
@@ -228,12 +235,12 @@ class myHandler(http.server.BaseHTTPRequestHandler):
             nc = json.loads(postVars)
             if 'command' in nc:
                 cmd = nc['command']
-                print(cmd)
+                print('command: ' + cmd)
                 if cmd == 'shutdown' or cmd == 'reboot':
                     open('.clean_shutdown', 'w').close()
                     if cmd == 'shutdown': subprocess.call(['shutdown', '-h', 'now'])
                     else: subprocess.call(['reboot'])
-                if cmd == 'kill':
+                elif cmd == 'kill':
                     os.remove('data/' + nc['name'] + '.csv')
                     for b in config['brewfiles']:
                         if b == nc['name']: config['brewfiles'].remove(b)
@@ -257,11 +264,7 @@ class myHandler(http.server.BaseHTTPRequestHandler):
             update_config()
             event.set()
 
-        self.send_response(200)
-        self.end_headers()
-        status = config
-        status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
-        self.wfile.write(bytearray(json.dumps(status), 'utf-8'))
+        self.sendStatus()
 
     def do_GET(self):
         if self.path=="/": self.path="/index.html"
