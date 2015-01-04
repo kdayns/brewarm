@@ -13,10 +13,6 @@ import datetime;
 import subprocess;
 import threading;
 
-# config
-decimate        = 4
-debug           = 1
-
 shutdown_pin    = 7
 datadir         = 'data'
 PORT_NUMBER     = 80
@@ -25,6 +21,8 @@ config = {
     'active'    : '',
     'running'   : False,
     'update'    : 60,
+    'decimate'  : 4,
+    'debug'     : 1,
 }
 
 # private
@@ -42,6 +40,9 @@ subprocess.call(['modprobe', 'w1_therm'])
 os.chdir('/root/brewarm')
 
 def update_config():
+    global debug, config
+
+    debug = config['debug']
     configx = copy.deepcopy(config)
     print(json.dumps(configx, indent=True))
     del configx['brewfiles']
@@ -51,14 +52,18 @@ def update_config():
 if path.isfile('config'):
     config = json.loads(open('config').read())
     config['brewfiles'] = []
+    if not 'debug' in config: config['debug'] = True
+    if not 'decimate' in config: config['decimate'] = 4
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
     update_config()
     os.remove('.clean_shutdown')
 
+debug = config['debug']
+
 def thread_update_temp(k, d):
-    global decimate
+    decimate = config['decimate']
 
     v = None
     for i in range(decimate):
@@ -156,7 +161,7 @@ def thread_temp():
 
             if csv != None:
                 csv.write(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
-                for s in asens: csv.write(',' + str(round(sensors[s][avg] / decimate, 3)))
+                for s in asens: csv.write(',' + str(round(sensors[s][avg] / config['decimate'], 3)))
                 csv.write('\n')
                 csv.flush()
 
@@ -260,6 +265,8 @@ class myHandler(http.server.BaseHTTPRequestHandler):
             if 'active' in nc: config['active'] = nc['active']
             if 'running' in nc: config['running'] = nc['running']
             if 'update' in nc: config['update'] = int(nc['update'])
+            if 'debug' in nc: config['debug'] = nc['debug']
+            if 'decimate' in nc: config['decimate'] = nc['decimate']
             if 'date' in nc:
                 try:
                     datetime.datetime.strptime(nc['date'], '%Y/%m/%d %H:%M:%S')

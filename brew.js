@@ -161,6 +161,7 @@ function saveConfig() {
     data = { 'sensors': sdata,
             'update': $('#update').val(),
             'date': $('#date').val(),
+            'debug': document.getElementById("debug").checked,
             };
     $.post('status', JSON.stringify(data));
 }
