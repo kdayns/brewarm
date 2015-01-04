@@ -217,6 +217,10 @@ class myHandler(http.server.BaseHTTPRequestHandler):
         status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         self.wfile.write(bytearray(json.dumps(status), 'utf-8'))
 
+    def log_message(self, format, *args):
+        if not debug: return
+        http.server.BaseHTTPRequestHandler.log_message(self, format, *args)
+
     def handle_one_request(self):
         try:
             http.server.BaseHTTPRequestHandler.handle_one_request(self)
@@ -269,8 +273,9 @@ class myHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path=="/": self.path="/index.html"
 
-        print(self.path)
+        if debug: print(self.path)
         mime = {
+            '.csv': 'text/html',
             '.html': 'text/html',
             '.jpg': 'image/jpg',
             '.gif': 'image/gif',
@@ -280,7 +285,9 @@ class myHandler(http.server.BaseHTTPRequestHandler):
         ext = self.path[self.path.rfind('.'):]
         if debug: print('ext: ' + ext)
 
-        if not ext in mime: m = 'text/html'
+        if not ext in mime:
+            m = 'text/html'
+            print('extension not found: ' + ext)
         else: m = mime[ext]
 
         try:
