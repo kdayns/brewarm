@@ -22,9 +22,33 @@ var g = new Dygraph(document.getElementById("graph"), "", {
 
 updateStatus(true);
 
+function post(url, cb, data) { ajax("POST", url, cb, data); }
+function get(url, cb, data) { ajax("GET", url, cb, data); }
+function ajax(method, url, cb, data) {
+    if (typeof(data)==='undefined') data = null;
+    var req;
+    if (window.XMLHttpRequest) {
+        // Firefox, Opera, IE7, and other browsers will use the native object
+        req = new XMLHttpRequest();
+    } else {
+        // IE 5 and 6 will use the ActiveX control
+        req = new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    req.onreadystatechange = function () {
+        if (req.readyState == 4) {
+            if (req.status === 200 ||  // Normal http
+                req.status === 0) {    // Chrome w/ --allow-file-access-from-files
+                cb(req.responseText);
+            }
+        }
+    };
+    req.open(method, url, true);
+    req.send(data);
+}
+
 function updateStatus(firstTime = false) {
     recvStatus.firstTime = firstTime;
-    $.post('status', recvStatus);
+    post('status', recvStatus, firstTime ? null : JSON.stringify({ 'tail': g.xAxisExtremes()[1] }));
     //.fail(function( jqXHR, textStatus, errorThrown ) { alert(textStatus); });;
 }
 
@@ -79,6 +103,10 @@ function recvStatus(data) {
         if (!u.is(':focus')) u.val(s['update']);
         var d = $('#date');
         if (!d.is(':focus')) d.val(s['date']);
+    tail = s['tail'];
+    if (tail) {
+        // TODO - load new data
+    }
 }
 
 function toggleConfig(el) { $('#config').toggle(el.checked); }
@@ -125,6 +153,7 @@ function removeBrew() {
         $('#circle').css('background', 'grey');
         g.updateOptions( { dateWindow : null });
         // TODO - clear graph
+        //g.updateOptions({ 'file': null } );
     }
     $.post('status', JSON.stringify({ 'command': 'kill', 'name': n }));
 }
@@ -196,7 +225,10 @@ function brewChanged(e) {
 }
 function loadBrew(bn) {
     bn = 'data/' + bn + '.csv';
+    get(bn, loadBrewData);
+}
 
+function loadBrewData(data) {
     g.ready(function() {
         // draw labels
         $('#labels').empty();
@@ -214,14 +246,12 @@ function loadBrew(bn) {
             lt.for = i - 1;
             lt.innerHTML = names[i];
             labels.appendChild(lt);
-
         }
 
-    /*
-    g.setAnnotations([
-    { series: "beer", x: "2014/12/01 17:59:18", shortText: "X", text: "DEMO"}
-    ]);
-    */
+        /* g.setAnnotations([
+        { series: "beer", x: "2014/12/01 17:59:18", shortText: "X", text: "DEMO"}
+        ]); */
+
         setTimeout(tryShowLastDays, 10);
 
         if (interval) clearInterval(interval);
@@ -237,6 +267,6 @@ function loadBrew(bn) {
         }, 1000);
     });
 
-    g.updateOptions({ 'file': bn } );
+    g.updateOptions({ 'file': data } );
 }
 
