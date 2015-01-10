@@ -53,56 +53,56 @@ function updateStatus(firstTime = false) {
 }
 
 function recvStatus(data) {
-        if (!data.length) {
-            console.log('no status data recv');
-            return;
+    if (!data.length) {
+        console.log('no status data recv');
+        return;
+    }
+    if (data[0] != '{') {
+        document.getElementById("status").innerHTML = data;
+        return;
+    }
+    document.getElementById("status").innerHTML = '';
+    var s = JSON.parse(data);
+    var brewnames = $('#brewname  > option');
+    for (var bi = 0; bi < s["brewfiles"].length; ++bi) {
+        var bf = s["brewfiles"][bi];
+        var found = false;
+        brewnames.each(function(index) {
+            if ($(this).text() == bf) found = true;
+        });
+        if (!found) $('#brewname').append('<option>' + bf + '</option>');
+    }
+    running = s['running'];
+    if (s["active"] != activeBrew) {
+        activeBrew = s["active"];
+        if (recvStatus.firstTime) {
+            loadBrew(activeBrew);
+            $('#brewname').val(activeBrew);
         }
-        if (data[0] != '{') {
-            document.getElementById("status").innerHTML = data;
-            return;
-        }
-        document.getElementById("status").innerHTML = '';
-        var s = JSON.parse(data);
-        var brewnames = $('#brewname  > option');
-        for (var bi = 0; bi < s["brewfiles"].length; ++bi) {
-            var bf = s["brewfiles"][bi];
-            var found = false;
-            brewnames.each(function(index) {
-                if ($(this).text() == bf) found = true;
-            });
-            if (!found) $('#brewname').append('<option>' + bf + '</option>');
-        }
-        running = s['running'];
-        if (s["active"] != activeBrew) {
-            activeBrew = s["active"];
-            if (recvStatus.firstTime) {
-                loadBrew(activeBrew);
-                $('#brewname').val(activeBrew);
-            }
-        }
-        updateRunning();
-        var sensors = s["sensors"];
-        for (var si in sensors) {
-            var sensor = sensors[si];
-            var found = false;
-            $("#sensor_list td.id").each(function(i, tr) {
-                 if ($(tr).html() == si) {
-                     found = true;
-                     $("#sensor_list td.value").eq(i).html('<b>' + sensor[1] + '</b>');
-                 }
-            });
-            if (!found) $('#sensor_list').append(
-                    '<tr>'
-                    + '<td class=enabled><input type=checkbox class=enabled ' + (sensor[3] ? 'checked=1' : '') + '/></td>'
-                    + '<td class=id>' + si + '</td>'
-                    + '<td class=value><b>' + sensor[1] + '</b></td>'
-                    + '<td><input class=name type=text value="' + sensor[0] + '"></td>'
-                    + '</tr>')
-        }
-        var u = $('#update');
-        if (!u.is(':focus')) u.val(s['update']);
-        var d = $('#date');
-        if (!d.is(':focus')) d.val(s['date']);
+    }
+    updateRunning();
+    var sensors = s["sensors"];
+    for (var si in sensors) {
+        var sensor = sensors[si];
+        var found = false;
+        $("#sensor_list td.id").each(function(i, tr) {
+             if ($(tr).html() == si) {
+                 found = true;
+                 $("#sensor_list td.value").eq(i).html('<b>' + sensor[1] + '</b>');
+             }
+        });
+        if (!found) $('#sensor_list').append(
+                '<tr>'
+                + '<td class=enabled><input type=checkbox class=enabled ' + (sensor[3] ? 'checked=1' : '') + '/></td>'
+                + '<td class=id>' + si + '</td>'
+                + '<td class=value><b>' + sensor[1] + '</b></td>'
+                + '<td><input class=name type=text value="' + sensor[0] + '"></td>'
+                + '</tr>')
+    }
+    var u = $('#update');
+    if (!u.is(':focus')) u.val(s['update']);
+    var d = $('#date');
+    if (!d.is(':focus')) d.val(s['date']);
     tail = s['tail'];
     if (tail) {
         // TODO - load new data
@@ -223,50 +223,46 @@ function brewChanged(e) {
     updateRunning();
     if (e != activeBrew) g.updateOptions( { dateWindow : null });
 }
-function loadBrew(bn) {
-    bn = 'data/' + bn + '.csv';
-    get(bn, loadBrewData);
-}
-
+function loadBrew(bn) { get('data/' + bn + '.csv', loadBrewData); }
 function loadBrewData(data) {
-    g.ready(function() {
-        // draw labels
-        $('#labels').empty();
-        var labels = document.getElementById("labels");
-        var names = g.getLabels();
-        for (var i = 1 ; i < names.length; ++i) {
-            var l = document.createElement("input");
-            l.type = "checkbox";
-            l.checked = true;
-            l.id = i - 1;
-            l.onclick = function() { visibilityChange(l); }
-            labels.appendChild(l);
-
-            var lt = document.createElement("label");
-            lt.for = i - 1;
-            lt.innerHTML = names[i];
-            labels.appendChild(lt);
-        }
-
-        /* g.setAnnotations([
-        { series: "beer", x: "2014/12/01 17:59:18", shortText: "X", text: "DEMO"}
-        ]); */
-
-        setTimeout(tryShowLastDays, 10);
-
-        if (interval) clearInterval(interval);
-        interval = setInterval(function() {
-            refreshCounter++;
-            if ((refreshCounter % graphInterval) == 0) {
-                g.ready(function() { showLastDays(g); });
-                g.updateOptions({ 'file': bn } );
-            }
-            if ((refreshCounter % statusInterval) == 0) {
-                updateStatus();
-            }
-        }, 1000);
-    });
-
+    g.ready(brewReady);
     g.updateOptions({ 'file': data } );
+}
+function brewReady() {
+    // draw labels
+    $('#labels').empty();
+    var labels = document.getElementById("labels");
+    var names = g.getLabels();
+    for (var i = 1 ; i < names.length; ++i) {
+        var l = document.createElement("input");
+        l.type = "checkbox";
+        l.checked = true;
+        l.id = i - 1;
+        l.onclick = function() { visibilityChange(l); }
+        labels.appendChild(l);
+
+        var lt = document.createElement("label");
+        lt.for = i - 1;
+        lt.innerHTML = names[i];
+        labels.appendChild(lt);
+    }
+
+    /* g.setAnnotations([
+    { series: "beer", x: "2014/12/01 17:59:18", shortText: "X", text: "DEMO"}
+    ]); */
+
+    setTimeout(tryShowLastDays, 10);
+
+    if (interval) clearInterval(interval);
+    interval = setInterval(function() {
+        refreshCounter++;
+        if ((refreshCounter % graphInterval) == 0) {
+            g.ready(function() { showLastDays(g); });
+            g.updateOptions({ 'file': bn } );
+        }
+        if ((refreshCounter % statusInterval) == 0) {
+            updateStatus();
+        }
+    }, 1000);
 }
 
