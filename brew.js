@@ -1,9 +1,9 @@
 // TODO
+// fix js legend
+// sd saver
+// annotations
 // lcd
 // sensor min/max
-// realtime update
-// fix js legend
-// annotations
 
 var graphInterval = 60;
 var statusInterval = 5;
@@ -11,10 +11,11 @@ var lastDays = 24 * 3600 * 3; // zoom on last days data
 
 // private
 var running = false;
-var bn = '';
+var selectedBrew = '';
 var interval = null;
 var activeBrew = null;
 var refreshCounter = 0;
+var rawdata = [];
 var g = new Dygraph(document.getElementById("graph"), "", {
     rollPeriod: 10,
     showRoller: true,
@@ -48,7 +49,8 @@ function ajax(method, url, cb, data) {
 
 function updateStatus(firstTime = false) {
     recvStatus.firstTime = firstTime;
-    post('status', recvStatus, firstTime ? null : JSON.stringify({ 'tail': g.xAxisExtremes()[1] }));
+    post('status', recvStatus);
+    //, firstTime ? null : JSON.stringify({ 'tail': g.xAxisExtremes()[1] }));
     //.fail(function( jqXHR, textStatus, errorThrown ) { alert(textStatus); });;
 }
 
@@ -103,9 +105,18 @@ function recvStatus(data) {
     if (!u.is(':focus')) u.val(s['update']);
     var d = $('#date');
     if (!d.is(':focus')) d.val(s['date']);
-    tail = s['tail'];
-    if (tail) {
-        // TODO - load new data
+    var tail = s['tail'];
+    if (tail && rawdata.length && running && selectedBrew == activeBrew) {
+        for (var ti = 0; ti < tail.length; ++ti) {
+            if (tail[ti][0] <= rawdata[rawdata.length - 1][0]) continue;
+
+            rawdata.push(tail[ti]);
+            g.rawData_ = rawdata;
+            g.cascadeDataDidUpdateEvent_();
+            g.predraw_();
+            showLastDays();
+            break;
+        }
     }
 }
 
@@ -113,7 +124,7 @@ function toggleConfig(el) { $('#config').toggle(el.checked); }
 function visibilityChange(el) { g.setVisibility(el.id, el.checked); }
 function tryShowLastDays() { if (!showLastDays()) setTimeout(tryShowLastDays, 10); }
 function updateRunning() {
-    if (getSelectedName() != activeBrew) {
+    if (selectedBrew != activeBrew) {
         $('#stop').attr("disabled", true);
         $('#start').attr("disabled", true);
         $('#circle').css('background', 'grey');
@@ -153,7 +164,7 @@ function removeBrew() {
         $('#circle').css('background', 'grey');
         g.updateOptions( { dateWindow : null });
         // TODO - clear graph
-        //g.updateOptions({ 'file': null } );
+        //g.updateOptions({ 'file': [] } );
     }
     $.post('status', JSON.stringify({ 'command': 'kill', 'name': n }));
 }
@@ -201,6 +212,8 @@ function shutdown(reboot) {
 function showLastDays() {
     if (!lastDays) return;
 
+    if (!running || selectedBrew != activeBrew) return true;
+
     var d = g.xAxisExtremes()[1] - g.xAxisExtremes()[0];
     // FIXME - reset extremes
         //console.log(d);
@@ -221,12 +234,18 @@ function stop() {
 function brewChanged(e) {
     loadBrew(e);
     updateRunning();
-    if (e != activeBrew) g.updateOptions( { dateWindow : null });
 }
-function loadBrew(bn) { get('data/' + bn + '.csv', loadBrewData); }
-function loadBrewData(data) {
+function loadBrew(bn) {
+    selectedBrew = bn;
+    get('data/' + bn + '.csv', loadBrewData);
+}
+function loadBrewData(csv) {
     g.ready(brewReady);
-    g.updateOptions({ 'file': data } );
+    if (selectedBrew != activeBrew) g.updateOptions( { dateWindow : null }, true);
+    g.rawData_ = g.parseCSV_(csv);
+    g.cascadeDataDidUpdateEvent_();
+    g.predraw_();
+    rawdata = g.rawData_;
 }
 function brewReady() {
     // draw labels
@@ -256,10 +275,6 @@ function brewReady() {
     if (interval) clearInterval(interval);
     interval = setInterval(function() {
         refreshCounter++;
-        if ((refreshCounter % graphInterval) == 0) {
-            g.ready(function() { showLastDays(g); });
-            g.updateOptions({ 'file': bn } );
-        }
         if ((refreshCounter % statusInterval) == 0) {
             updateStatus();
         }

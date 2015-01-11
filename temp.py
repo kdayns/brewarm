@@ -27,6 +27,7 @@ config = {
 
 # private
 csv = None
+latest = []
 w1path = '/sys/bus/w1/devices/'
 name = 0
 curr = 1
@@ -83,7 +84,7 @@ def thread_update_temp(k, d):
     return
 
 def thread_temp():
-    global config, csv, event
+    global config, csv, event, latest
     sensors = config['sensors']
     lastActive = ''
     asens = []
@@ -103,6 +104,7 @@ def thread_temp():
 
         # write file
         if config['running'] == False:
+            latest = []
             asens = []
             lastActive = ''
             if csv != None:
@@ -110,6 +112,7 @@ def thread_temp():
                 csv = None
         else:
             if lastActive != config['active']:
+                latest = []
                 asens = []
                 if csv != None: csv.close()
                 try:
@@ -160,10 +163,18 @@ def thread_temp():
                         csv = None
 
             if csv != None:
-                csv.write(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
-                for s in asens: csv.write(',' + str(round(sensors[s][avg] / config['decimate'], 3)))
+                newdata = []
+                now = datetime.datetime.now()
+                newdata.append(int(now.timestamp() * 1000))
+                csv.write(now.strftime('%Y/%m/%d %H:%M:%S'))
+                for s in asens:
+                    v = round(sensors[s][avg] / config['decimate'], 3)
+                    csv.write(',' + str(v))
+                    newdata.append(v)
                 csv.write('\n')
                 csv.flush()
+                latest.append(newdata)
+                if len(latest) > 10: latest.pop(0)
 
         if debug: print('waiting: ', config['update'])
         event.wait(timeout=config['update'])
@@ -216,9 +227,12 @@ def thread_discovery():
 
 class myHandler(http.server.BaseHTTPRequestHandler):
     def sendStatus(self):
+        global config, latest
         self.send_response(200)
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
         status = config
+        status['tail'] = latest
         status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         self.wfile.write(bytearray(json.dumps(status), 'utf-8'))
 
