@@ -1,6 +1,4 @@
 // TODO
-// fix js legend
-// sd saver
 // annotations
 // lcd
 // sensor min/max
@@ -240,6 +238,26 @@ function loadBrew(bn) {
     get('data/' + bn + '.csv', loadBrewData);
 }
 function loadBrewData(csv) {
+    // draw labels
+    $('#labels').empty();
+    var labels = document.getElementById("labels");
+    var end = csv.indexOf('\n');
+    if (end != -1) {
+        var sl = csv.substring(0,end).split(',');
+        for (var i = 1; i < sl.length; ++i) {
+            var l = document.createElement("input");
+            l.type = "checkbox";
+            l.checked = true;
+            l.id = i - 1;
+            l.onclick = function(e) { visibilityChange(e.target); };
+            labels.appendChild(l);
+
+            var lt = document.createElement("label");
+            lt.for = i - 1;
+            lt.innerHTML = sl[i];
+            labels.appendChild(lt);
+        }
+    }
     g.ready(brewReady);
     if (selectedBrew != activeBrew) g.updateOptions( { dateWindow : null }, true);
     g.rawData_ = g.parseCSV_(csv);
@@ -248,23 +266,6 @@ function loadBrewData(csv) {
     rawdata = g.rawData_;
 }
 function brewReady() {
-    // draw labels
-    $('#labels').empty();
-    var labels = document.getElementById("labels");
-    var names = g.getLabels();
-    for (var i = 1 ; i < names.length; ++i) {
-        var l = document.createElement("input");
-        l.type = "checkbox";
-        l.checked = true;
-        l.id = i - 1;
-        l.onclick = function() { visibilityChange(l); }
-        labels.appendChild(l);
-
-        var lt = document.createElement("label");
-        lt.for = i - 1;
-        lt.innerHTML = names[i];
-        labels.appendChild(lt);
-    }
 
     /* g.setAnnotations([
     { series: "beer", x: "2014/12/01 17:59:18", shortText: "X", text: "DEMO"}
