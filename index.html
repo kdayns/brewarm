@@ -19,9 +19,11 @@
 <div id="graph"></div>
 <div id="config">
     <div class="dynDiv_moveParentDiv dynDiv_bodyLimit" style="float:clear; padding:10px; background:purple;" ></div>
-    update interval <input type=text id=update style='float:rigth;'/>
-    <br>
     date <input type=text id=date value=10 style='float:rigth;'/>
+    <br>
+    update interval (s) <input type=text id=update style='float:rigth;'/>
+    <br>
+    sync interval (s) <input type=text id=sync style='float:rigth;'/>
     <table id="sensor_list" style="padding: 1px; cursor: auto;"></table>
     <button id="save" style="float:left" onclick="saveConfig()">save</button>
     <button id="shutdown" style="float:right" onclick="shutdown(false)">shutdown</button>

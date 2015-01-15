@@ -1,11 +1,13 @@
 #!/bin/env python3
 
 import sys
+import signal
 import copy
 import io
 import os
 import json
 import time
+import shutil;
 import http.server
 import socketserver
 from os import curdir, sep, listdir, path
@@ -23,6 +25,7 @@ config = {
     'update'    : 60,
     'decimate'  : 4,
     'debug'     : 1,
+    'sync'      : 60 * 60,
 }
 
 # private
@@ -35,6 +38,7 @@ avg = 2
 enabled = 3
 lock = threading.Lock()
 event = threading.Event()
+lastSync = datetime.datetime.now()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
@@ -48,6 +52,7 @@ def update_config():
     print(json.dumps(configx, indent=True))
     del configx['brewfiles']
     del configx['date']
+    del configx['tail']
     open('config', 'w').write(json.dumps(configx, indent=True))
 
 if path.isfile('config'):
@@ -55,6 +60,7 @@ if path.isfile('config'):
     config['brewfiles'] = []
     if not 'debug' in config: config['debug'] = True
     if not 'decimate' in config: config['decimate'] = 4
+    if not 'sync' in config: config['sync'] = 60 * 60
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
@@ -83,8 +89,17 @@ def thread_update_temp(k, d):
     if debug: print("data: %s %s " % (k, v))
     return
 
+def sync(toTemp = False):
+    print('syncing.. ' + str(toTemp))
+    f = datadir + '/' + config['active'] + '.csv'
+    t = '/tmp/' + config['active']
+    if toTemp: shutil.copyfile(f, t)
+    else:
+        shutil.copyfile(t, f + '_tmp')
+        shutil.move(f + '_tmp', f)
+
 def thread_temp():
-    global config, csv, event, latest
+    global config, csv, event, latest, lastSync
     sensors = config['sensors']
     lastActive = ''
     asens = []
@@ -110,13 +125,19 @@ def thread_temp():
             if csv != None:
                 csv.close()
                 csv = None
+                sync()
         else:
             if lastActive != config['active']:
                 latest = []
                 asens = []
-                if csv != None: csv.close()
+                if csv != None:
+                    csv.close()
+                    sync()
                 try:
-                    csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
+                    if config['sync']:
+                        sync(True)
+                        csv = open('/tmp/' + config['active'], 'a+')
+                    else: csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
                     size = csv.tell()
                     if size:
                         print('appending: ' + config['active'])
@@ -175,12 +196,17 @@ def thread_temp():
                 csv.flush()
                 latest.append(newdata)
                 if len(latest) > 10: latest.pop(0)
+                if config['sync'] and (now - lastSync).total_seconds() > config['sync']:
+                    lastSync = now
+                    sync()
 
         if debug: print('waiting: ', config['update'])
         event.wait(timeout=config['update'])
         event.clear()
 
 def thread_shutdown():
+    global config
+
     try: open('/sys/class/gpio/export', 'w').write(str(shutdown_pin))
     except: print('export failed: ' + str(sys.exc_info()[0]))
 
@@ -189,6 +215,7 @@ def thread_shutdown():
         except: print('gpio open failed: ' + str(sys.exc_info()[0]))
         if val == '1':
             print('shutdown')
+            if config['sync']: sync()
             open('.clean_shutdown', 'w').close()
             subprocess.call(['shutdown', '-h', 'now'])
             return;
@@ -310,6 +337,7 @@ class myHandler(http.server.BaseHTTPRequestHandler):
             m = 'text/html'
             print('extension not found: ' + ext)
         else: m = mime[ext]
+        if ext == '.csv': sync()
 
         try:
             f = open(curdir + sep + self.path) 
@@ -328,11 +356,19 @@ threading.Thread(daemon=True, target=thread_temp).start()
 threading.Thread(daemon=True, target=thread_shutdown).start()
 threading.Thread(daemon=True, target=thread_discovery).start()
 
+def signal_term_handler(signal, frame):
+    print('got SIGTERM')
+    sync()
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, signal_term_handler)
+
 try:
     server = http.server.HTTPServer(('', PORT_NUMBER), myHandler)
     print ('Started httpserver on port ' , PORT_NUMBER)
     server.serve_forever()
 except KeyboardInterrupt:
     print('^C received, shutting down the web server')
+    sync()
     server.socket.close()
 

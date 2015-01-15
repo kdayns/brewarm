@@ -103,6 +103,9 @@ function recvStatus(data) {
     if (!u.is(':focus')) u.val(s['update']);
     var d = $('#date');
     if (!d.is(':focus')) d.val(s['date']);
+    var u = $('#sync');
+    if (!u.is(':focus')) u.val(s['sync']);
+
     var tail = s['tail'];
     if (tail && rawdata.length && running && selectedBrew == activeBrew) {
         for (var ti = 0; ti < tail.length; ++ti) {
@@ -198,6 +201,7 @@ function saveConfig() {
     // TODO - verify date
     data = { 'sensors': sdata,
             'update': $('#update').val(),
+            'sync': $('#sync').val(),
             'date': $('#date').val(),
             'debug': document.getElementById("debug").checked,
             };
