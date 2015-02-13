@@ -253,6 +253,10 @@ def thread_discovery():
     return
 
 class myHandler(http.server.BaseHTTPRequestHandler):
+    def setup(self):
+        http.server.BaseHTTPRequestHandler.setup(self)
+        self.request.settimeout(5)
+
     def sendStatus(self):
         global config, latest
         self.send_response(200)
