@@ -282,44 +282,58 @@ class myHandler(http.server.BaseHTTPRequestHandler):
         global config, event
         varLen = int(self.headers['Content-Length'])
         postVars = str(self.rfile.read(varLen), 'utf-8')
-        if len(postVars):
-            if debug:
-                print('config: ' + json.dumps(config))
-                print('post: ' + postVars)
-            nc = json.loads(postVars)
-            if 'command' in nc:
-                cmd = nc['command']
-                print('command: ' + cmd)
-                if cmd == 'shutdown' or cmd == 'reboot':
-                    open('.clean_shutdown', 'w').close()
-                    if cmd == 'shutdown': subprocess.call(['shutdown', '-h', 'now'])
-                    else: subprocess.call(['reboot'])
-                elif cmd == 'kill':
-                    os.remove('data/' + nc['name'] + '.csv')
-                    for b in config['brewfiles']:
-                        if b == nc['name']: config['brewfiles'].remove(b)
-                self.send_response(200)
-                self.end_headers()
-                return;
-            if 'sensors' in nc:
-                lock.acquire()
-                for k,v in nc['sensors'].items():
-                    if config['sensors'][k][name] != v[0]: config['sensors'][k][name] = v[0]
-                    if config['sensors'][k][enabled] != v[1]: config['sensors'][k][enabled] = v[1]
-                lock.release()
-            if 'active' in nc: config['active'] = nc['active']
-            if 'running' in nc: config['running'] = nc['running']
-            if 'update' in nc: config['update'] = int(nc['update'])
-            if 'debug' in nc: config['debug'] = nc['debug']
-            if 'decimate' in nc: config['decimate'] = nc['decimate']
-            if 'date' in nc:
-                try:
-                    datetime.datetime.strptime(nc['date'], '%Y/%m/%d %H:%M:%S')
-                    subprocess.call(['date', '-s', nc['date']])
-                except: print('bad date passed: ' + nc['date'])
-            update_config()
-            event.set()
 
+        if self.path == '/comment': self.handleComment(postVars)
+        else: self.handleConfig(postVars)
+
+    def handleComment(self, postVars):
+        print(postVars)
+        #TODO
+        self.send_response(200)
+        self.end_headers()
+        return
+
+    def handleConfig(self, postVars):
+        if not len(postVars):
+            self.sendStatus()
+            return;
+
+        if debug:
+            print('config: ' + json.dumps(config))
+            print('post: ' + postVars)
+        nc = json.loads(postVars)
+        if 'command' in nc:
+            cmd = nc['command']
+            print('command: ' + cmd)
+            if cmd == 'shutdown' or cmd == 'reboot':
+                open('.clean_shutdown', 'w').close()
+                if cmd == 'shutdown': subprocess.call(['shutdown', '-h', 'now'])
+                else: subprocess.call(['reboot'])
+            elif cmd == 'kill':
+                os.remove('data/' + nc['name'] + '.csv')
+                for b in config['brewfiles']:
+                    if b == nc['name']: config['brewfiles'].remove(b)
+            self.send_response(200)
+            self.end_headers()
+            return;
+        if 'sensors' in nc:
+            lock.acquire()
+            for k,v in nc['sensors'].items():
+                if config['sensors'][k][name] != v[0]: config['sensors'][k][name] = v[0]
+                if config['sensors'][k][enabled] != v[1]: config['sensors'][k][enabled] = v[1]
+            lock.release()
+        if 'active' in nc: config['active'] = nc['active']
+        if 'running' in nc: config['running'] = nc['running']
+        if 'update' in nc: config['update'] = int(nc['update'])
+        if 'debug' in nc: config['debug'] = nc['debug']
+        if 'decimate' in nc: config['decimate'] = nc['decimate']
+        if 'date' in nc:
+            try:
+                datetime.datetime.strptime(nc['date'], '%Y/%m/%d %H:%M:%S')
+                subprocess.call(['date', '-s', nc['date']])
+            except: print('bad date passed: ' + nc['date'])
+        update_config()
+        event.set()
         self.sendStatus()
 
     def do_GET(self):
