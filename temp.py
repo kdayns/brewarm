@@ -252,7 +252,7 @@ def thread_discovery():
         threading.Event().wait(timeout=5)
     return
 
-class myHandler(http.server.BaseHTTPRequestHandler):
+class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
     def sendStatus(self):
         global config, latest
         self.send_response(200)
@@ -366,6 +366,10 @@ class myHandler(http.server.BaseHTTPRequestHandler):
         except:
             self.send_error(500,'Unknown error: %s' % sys.exc_info()[0])
 
+
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    pass
+
 threading.Thread(daemon=True, target=thread_temp).start()
 threading.Thread(daemon=True, target=thread_shutdown).start()
 threading.Thread(daemon=True, target=thread_discovery).start()
@@ -378,7 +382,8 @@ def signal_term_handler(signal, frame):
 signal.signal(signal.SIGTERM, signal_term_handler)
 
 try:
-    server = http.server.HTTPServer(('', PORT_NUMBER), myHandler)
+    server = ThreadingHTTPServer(('', PORT_NUMBER), BrewHTTPHandler)
+    server.daemon_threads = True
     print ('Started httpserver on port ' , PORT_NUMBER)
     server.serve_forever()
 except KeyboardInterrupt:
