@@ -40,8 +40,10 @@ lock = threading.Lock()
 event = threading.Event()
 lastSync = datetime.datetime.now()
 
+open('/sys/class/i2c-adapter/i2c-0/new_device', 'w').write("ds1307 0x68")
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
+subprocess.call(['hwclock', '-s']) # load clock from rtc
 os.chdir('/root/brewarm')
 
 def update_config():
