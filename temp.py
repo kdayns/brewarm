@@ -117,6 +117,9 @@ def thread_temp():
 
         rthreads = []
         for k,d in sensors.items():
+            if not d[enabled]:
+                d[curr] = None
+                continue
             th = threading.Thread(daemon=True, target=thread_update_temp, args=(k, d,))
             th.start()
             rthreads.append(th)
@@ -196,8 +199,12 @@ def thread_temp():
                 newdata.append(int(now.timestamp() * 1000))
                 csv.write(now.strftime('%Y/%m/%d %H:%M:%S'))
                 for s in asens:
-                    v = round(sensors[s][avg] / config['decimate'], 3)
-                    csv.write(',' + str(v))
+                    if not sensors[s][enabled]:
+                        v = None
+                        csv.write(',')
+                    else:
+                        v = round(sensors[s][avg] / config['decimate'], 3)
+                        csv.write(',' + str(v))
                     newdata.append(v)
                 csv.write('\n')
                 csv.flush()

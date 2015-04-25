@@ -1,7 +1,9 @@
 // TODO
+// data download
+// drop floating window, just display it below with some button
+// reasonable sensor min -20/ max 100
 // annotations
-// lcd
-// sensor min/max
+// external temp display
 
 var graphInterval = 60;
 var statusInterval = 5;
