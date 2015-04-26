@@ -53,9 +53,9 @@ def update_config():
     debug = config['debug']
     configx = copy.deepcopy(config)
     print(json.dumps(configx, indent=True))
-    del configx['brewfiles']
-    del configx['date']
-    del configx['tail']
+    if 'brewfiles' in configx: del configx['brewfiles']
+    if 'date' in configx: del configx['date']
+    if 'tail' in configx: del configx['tail']
     open('config', 'w').write(json.dumps(configx, indent=True))
 
 if path.isfile('config'):
@@ -98,14 +98,14 @@ def sync(toTemp = False):
     print('syncing.. ' + str(toTemp))
     f = datadir + '/' + config['active'] + '.csv'
     t = '/tmp/' + config['active']
-    if toTemp: shutil.copyfile(f, t)
+    if toTemp:
+        if path.isfile(f): shutil.copyfile(f, t)
     else:
-        try:
+        if path.isfile(t):
             shutil.copyfile(t, f + '_tmp')
             shutil.move(f + '_tmp', f)
-        except:
+        else:
             print("temp not present")
-            pass
 
 def thread_temp():
     global config, csv, event, latest, lastSync
