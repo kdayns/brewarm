@@ -290,6 +290,12 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             if debug: raise
             else: print('Unknown error: %s' % sys.exc_info()[0])
 
+    def do_GET(self):
+        if self.path=="/": self.path="/index.html"
+
+        if self.path=="/data/": self.handleData()
+        else: self.handleFile()
+
     def do_POST(self):
         global config, event
         varLen = int(self.headers['Content-Length'])
@@ -348,10 +354,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         event.set()
         self.sendStatus()
 
-    def do_GET(self):
-        if self.path=="/": self.path="/index.html"
-
-        if debug: print(self.path)
+    def handleFile(self):
         mime = {
             '.csv': 'text/html',
             '.html': 'text/html',
@@ -384,6 +387,15 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         except:
             self.send_error(500,'Unknown error: %s' % sys.exc_info()[0])
 
+    def handleData(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        d = ''
+        for f in listdir(datadir):
+            d += '<a href="' + f + '">' + f + '</a><br>'
+        self.wfile.write(bytearray(d, 'utf-8'))
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     pass
