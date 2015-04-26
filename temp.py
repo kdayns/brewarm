@@ -27,6 +27,7 @@ config = {
     'decimate'  : 4,
     'debug'     : 1,
     'sync'      : 60 * 60,
+    'i2c_bus'   : 1,
 }
 
 # private
@@ -41,7 +42,6 @@ lock = threading.Lock()
 event = threading.Event()
 lastSync = datetime.datetime.now()
 
-open('/sys/class/i2c-adapter/i2c-0/new_device', 'w').write("ds1307 0x68")
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 subprocess.call(['hwclock', '-s']) # load clock from rtc
@@ -64,6 +64,8 @@ if path.isfile('config'):
     if not 'debug' in config: config['debug'] = True
     if not 'decimate' in config: config['decimate'] = 4
     if not 'sync' in config: config['sync'] = 60 * 60
+    if not 'i2c_bus' in config: config['i2c_bus'] = 0
+    open('/sys/class/i2c-adapter/i2c-' + str(config['i2c_bus']) + '/new_device', 'w').write("ds1307 0x68")
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
