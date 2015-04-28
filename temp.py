@@ -376,10 +376,9 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             f = open(curdir + sep + self.path) 
             self.send_response(200)
             self.send_header('Content-type', m)
-            if ext == '.csv': self.send_header('Content-Encoding', 'gzip')
+            self.send_header('Content-Encoding', 'gzip')
             self.end_headers()
-            if ext == '.csv': self.wfile.write(gzip.compress(bytearray(f.read(), 'utf-8')))
-            else: self.wfile.write(bytearray(f.read(), 'utf-8'))
+            self.wfile.write(gzip.compress(bytearray(f.read(), 'utf-8')))
             f.close()
             return
         except IOError:
