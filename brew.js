@@ -1,5 +1,4 @@
 // TODO
-// drop floating window, just display it below with some button
 // reasonable sensor min -20/ max 100
 // annotations
 // external temp display
