@@ -88,15 +88,15 @@ function recvStatus(data) {
         $("#sensor_list td.id").each(function(i, tr) {
              if ($(tr).html() == si) {
                  found = true;
-                 $("#sensor_list td.value").eq(i).html('<b>' + sensor[1] + '</b>');
+                 $("#sensor_list td.value").eq(i).html('<b>' + sensor['curr'] + '</b>');
              }
         });
         if (!found) $('#sensor_list').append(
                 '<tr>'
-                + '<td class=enabled><input type=checkbox class=enabled ' + (sensor[3] ? 'checked=1' : '') + '/></td>'
+                + '<td class=enabled><input type=checkbox class=enabled ' + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
                 + '<td class=id>' + si + '</td>'
-                + '<td class=value><b>' + sensor[1] + '</b></td>'
-                + '<td><input class=name type=text value="' + sensor[0] + '"></td>'
+                + '<td class=value><b>' + sensor['curr'] + '</b></td>'
+                + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
                 + '</tr>')
     }
     var u = $('#update');

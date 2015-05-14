@@ -34,10 +34,6 @@ config = {
 csv = None
 latest = []
 w1path = '/sys/bus/w1/devices/'
-name = 0
-curr = 1
-avg = 2
-enabled = 3
 lock = threading.Lock()
 event = threading.Event()
 lastSync = datetime.datetime.now()
@@ -66,6 +62,11 @@ if path.isfile('config'):
     if not 'sync' in config: config['sync'] = 60 * 60
     if not 'i2c_bus' in config: config['i2c_bus'] = 0
     open('/sys/class/i2c-adapter/i2c-' + str(config['i2c_bus']) + '/new_device', 'w').write("ds1307 0x68")
+    if len(config['sensors']) and type(next(iter(config['sensors'].values()))) is not dict:
+         s = {}
+         for k,v in config['sensors'].items():
+             s[k] = { 'name':v[0], 'curr':v[1], 'avg':v[2], 'enabled':v[3] }
+         config['sensors'] = s
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
@@ -82,13 +83,13 @@ def thread_update_temp(k, d):
         try: val = open(w1path + k + '/w1_slave').read()
         except:
             print('read sensor %s failed: %s ' % (k, str(sys.exc_info()[0])))
-            d[curr] = 0
-            d[avg] = 0
+            d['curr'] = 0
+            d['avg'] = 0
             return
         pos = val.find('t=')
         v = float(val[pos + 2:]) / 1000
-        d[curr] = round(v, 3)
-        d[avg] += d[curr]
+        d['curr'] = round(v, 3)
+        d['avg'] += d['curr']
 
     if v == None: v = 0
     if debug: print("data: %s %s " % (k, v))
@@ -115,12 +116,12 @@ def thread_temp():
 
     while True:
         lock.acquire()
-        for k,d in sensors.items(): d[avg] = 0
+        for k,d in sensors.items(): d['avg'] = 0
 
         rthreads = []
         for k,d in sensors.items():
-            if not d[enabled]:
-                d[curr] = None
+            if not d['enabled']:
+                d['curr'] = None
                 continue
             th = threading.Thread(daemon=True, target=thread_update_temp, args=(k, d,))
             th.start()
@@ -161,7 +162,7 @@ def thread_temp():
                         lock.acquire()
                         for s in l.split(','):
                             for k,d in sensors.items():
-                                if s == d[name]:
+                                if s == d['name']:
                                     asens.append(k)
                                     break
                         lock.release()
@@ -181,11 +182,11 @@ def thread_temp():
                     else:
                         lock.acquire()
                         for k,d in sensors.items():
-                            if d[enabled]: asens.append(k)
+                            if d['enabled']: asens.append(k)
                         lock.release()
                         print('new data file: ' + config['active'] + ' sensors: ' + str(len(asens)))
                         csv.write('#date')
-                        for s in asens: csv.write(',' + sensors[s][name])
+                        for s in asens: csv.write(',' + sensors[s]['name'])
                         csv.write('\n')
                     lastActive = config['active']
                 except:
@@ -201,11 +202,11 @@ def thread_temp():
                 newdata.append(int(now.timestamp() * 1000))
                 csv.write(now.strftime('%Y/%m/%d %H:%M:%S'))
                 for s in asens:
-                    if not sensors[s][enabled]:
+                    if not sensors[s]['enabled']:
                         v = None
                         csv.write(',')
                     else:
-                        v = round(sensors[s][avg] / config['decimate'], 3)
+                        v = round(sensors[s]['avg'] / config['decimate'], 3)
                         csv.write(',' + str(v))
                     newdata.append(v)
                 csv.write('\n')
@@ -337,8 +338,8 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         if 'sensors' in nc:
             lock.acquire()
             for k,v in nc['sensors'].items():
-                if config['sensors'][k][name] != v[0]: config['sensors'][k][name] = v[0]
-                if config['sensors'][k][enabled] != v[1]: config['sensors'][k][enabled] = v[1]
+                if config['sensors'][k]['name'] != v[0]: config['sensors'][k]['name'] = v[0]
+                if config['sensors'][k]['enabled'] != v[1]: config['sensors'][k]['enabled'] = v[1]
             lock.release()
         if 'active' in nc: config['active'] = nc['active']
         if 'running' in nc: config['running'] = nc['running']
