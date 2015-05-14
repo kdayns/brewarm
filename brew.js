@@ -1,5 +1,5 @@
 // TODO
-// reasonable sensor min -20/ max 100
+// write none when reading sensor fails
 // annotations
 // external temp display
 
@@ -96,6 +96,8 @@ function recvStatus(data) {
                 + '<td class=enabled><input type=checkbox class=enabled ' + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
                 + '<td class=id>' + si + '</td>'
                 + '<td class=value><b>' + sensor['curr'] + '</b></td>'
+                + '<td><input class=min style="width:40px" type=text value="' + sensor['min'] + '"></td>'
+                + '<td><input class=max style="width:40px" type=text value="' + sensor['max'] + '"></td>'
                 + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
                 + '</tr>')
     }
@@ -194,8 +196,10 @@ function saveConfig() {
     var table = document.getElementById("sensor_list");
     for (var i = 0, row; row = table.rows[i]; i++) {
         sdata[row.cells[1].innerHTML] = [
-            row.cells[3].getElementsByClassName('name')[0].value,
+            row.cells[5].getElementsByClassName('name')[0].value,
             row.cells[0].getElementsByClassName('enabled')[0].checked,
+            row.cells[3].getElementsByClassName('min')[0].value,
+            row.cells[4].getElementsByClassName('max')[0].value,
             ];
     }
     // TODO - verify date

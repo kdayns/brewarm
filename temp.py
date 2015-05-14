@@ -65,7 +65,7 @@ if path.isfile('config'):
     if len(config['sensors']) and type(next(iter(config['sensors'].values()))) is not dict:
          s = {}
          for k,v in config['sensors'].items():
-             s[k] = { 'name':v[0], 'curr':v[1], 'avg':v[2], 'enabled':v[3] }
+             s[k] = { 'name':v[0], 'curr':v[1], 'avg':v[2], 'enabled':v[3], 'min':-20, 'max':100 }
          config['sensors'] = s
 
 if path.isfile('.clean_shutdown'):
@@ -83,12 +83,13 @@ def thread_update_temp(k, d):
         try: val = open(w1path + k + '/w1_slave').read()
         except:
             print('read sensor %s failed: %s ' % (k, str(sys.exc_info()[0])))
-            d['curr'] = 0
-            d['avg'] = 0
+            # TODO - write empty reading
+            d['curr'] = d['min']
+            d['avg'] = d['min']
             return
         pos = val.find('t=')
         v = float(val[pos + 2:]) / 1000
-        d['curr'] = round(v, 3)
+        d['curr'] = min(max(round(v, 3), d['min']), d['max'])
         d['avg'] += d['curr']
 
     if v == None: v = 0
@@ -228,6 +229,7 @@ def thread_shutdown():
     except: print('export failed: ' + str(sys.exc_info()[0]))
 
     while True:
+        val = ''
         try: val = open('/sys/class/gpio/gpio%u/value' % shutdown_pin).read().strip()
         except: print('gpio open failed: ' + str(sys.exc_info()[0]))
         if val == '1':
@@ -254,7 +256,7 @@ def thread_discovery():
             if not f in sensors.keys():
                 print("new sensor: " + f)
                 found = True
-                sensors[f] = [ f, 0, 0, True]
+                sensors[f] = { 'name':f, 'curr':0, 'avg':0, 'enabled':True, 'min':-20, 'max':100 }
             lock.release()
         if found:
             update_config()
@@ -340,6 +342,8 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             for k,v in nc['sensors'].items():
                 if config['sensors'][k]['name'] != v[0]: config['sensors'][k]['name'] = v[0]
                 if config['sensors'][k]['enabled'] != v[1]: config['sensors'][k]['enabled'] = v[1]
+                if config['sensors'][k]['min'] != v[2]: config['sensors'][k]['min'] = int(v[2])
+                if config['sensors'][k]['max'] != v[3]: config['sensors'][k]['max'] = int(v[3])
             lock.release()
         if 'active' in nc: config['active'] = nc['active']
         if 'running' in nc: config['running'] = nc['running']
