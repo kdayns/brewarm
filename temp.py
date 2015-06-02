@@ -32,6 +32,7 @@ config = {
 
 # private
 csv = None
+comment = None
 latest = []
 w1path = '/sys/bus/w1/devices/'
 lock = threading.Lock()
@@ -110,7 +111,7 @@ def sync(toTemp = False):
             print("temp not present")
 
 def thread_temp():
-    global config, csv, event, latest, lastSync
+    global config, csv, event, latest, lastSync, comment
     sensors = config['sensors']
     lastActive = ''
     asens = []
@@ -197,6 +198,7 @@ def thread_temp():
                         csv.close()
                         csv = None
 
+            # csv writer
             if csv != None:
                 newdata = []
                 now = datetime.datetime.now()
@@ -210,6 +212,18 @@ def thread_temp():
                         v = round(sensors[s]['avg'] / config['decimate'], 3)
                         csv.write(',' + str(v))
                     newdata.append(v)
+
+                if comment != None:
+                    i = 0
+                    for s in asens:
+                        if sensors[s]['name'] != comment['sensor']:
+                            i = i + 1
+                            continue
+                        csv.write(' #' + str(i) + ' ' + comment['string'])
+                        i = i + 1
+                        break
+                    comment = None
+
                 csv.write('\n')
                 csv.flush()
                 latest.append(newdata)
@@ -304,24 +318,41 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         varLen = int(self.headers['Content-Length'])
         postVars = str(self.rfile.read(varLen), 'utf-8')
 
-        if self.path == '/comment': self.handleComment(postVars)
-        else: self.handleConfig(postVars)
-
-    def handleComment(self, postVars):
-        print(postVars)
-        #TODO
-        self.send_response(200)
-        self.end_headers()
-        return
-
-    def handleConfig(self, postVars):
         if not len(postVars):
             self.sendStatus()
             return;
 
         if debug:
-            print('config: ' + json.dumps(config))
             print('post: ' + postVars)
+
+        if self.path == '/comment': self.handleComment(postVars)
+        else: self.handleConfig(postVars)
+
+    def handleComment(self, postVars):
+        global comment, config
+        if comment != None:
+            self.send_error(500,'Comment pending!')
+            return
+
+        if config['running'] == False:
+            self.send_error(500,'Not running')
+            return
+        #TODO - check if sensor active
+
+        post = json.loads(postVars)
+        comment = {}
+        comment['sensor'] = post['sensor']
+        comment['string'] = post['comment']
+        event.set()
+
+        self.send_response(200)
+        self.end_headers()
+        return
+
+    def handleConfig(self, postVars):
+        if debug:
+            print('current config: ' + json.dumps(config))
+
         nc = json.loads(postVars)
         if 'command' in nc:
             cmd = nc['command']

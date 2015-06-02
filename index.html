@@ -1,7 +1,7 @@
 <html><head>
 <meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="style.css">
-<script type="text/javascript" src="dygraph-combined.js"></script>
+<script type="text/javascript" src="dygraph-combined-dev.js"></script>
 <script type="text/javascript" src="jquery-git2.min.js"></script>
 <script type="text/javascript" src="json2.js"></script>
 </head><body>
@@ -18,6 +18,9 @@
 <div id="labels" style="float:center;"></div>
 <div id="graph"></div>
 <div id="config">
+    <select id="comment_sensors" style="float:left;"></select>
+    <input type=text id=comment style='float:rigth;'/>
+    <button style="float:rigth" onclick="addComment()">add comment</button>
     <div class="dynDiv_moveParentDiv dynDiv_bodyLimit" style="float:clear; padding:10px; background:purple;" >===== config =====</div>
     date <input type=text id=date value=10 style='float:rigth;'/>
     <br>

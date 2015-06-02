@@ -1,7 +1,8 @@
 // TODO
+// comment feedback on addition
 // write none when reading sensor fails
-// annotations
 // external temp display
+// temp control
 
 var graphInterval = 60;
 var statusInterval = 5;
@@ -43,6 +44,11 @@ function ajax(method, url, cb, data) {
     };
     req.open(method, url, true);
     req.send(data);
+}
+function getSelectedName(name) {
+    var select = document.getElementById(name);
+    if (!select.length) return '';
+    return select.options[select.selectedIndex].text;
 }
 
 function updateStatus(firstTime = false) {
@@ -91,7 +97,8 @@ function recvStatus(data) {
                  $("#sensor_list td.value").eq(i).html('<b>' + sensor['curr'] + '</b>');
              }
         });
-        if (!found) $('#sensor_list').append(
+        if (!found) {
+            $('#sensor_list').append(
                 '<tr>'
                 + '<td class=enabled><input type=checkbox class=enabled ' + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
                 + '<td class=id>' + si + '</td>'
@@ -99,7 +106,9 @@ function recvStatus(data) {
                 + '<td><input class=min style="width:40px" type=text value="' + sensor['min'] + '"></td>'
                 + '<td><input class=max style="width:40px" type=text value="' + sensor['max'] + '"></td>'
                 + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
-                + '</tr>')
+                + '</tr>');
+            $('#comment_sensors').append('<option>' + sensor['name'] + '</option>');
+        }
     }
     var u = $('#update');
     if (!u.is(':focus')) u.val(s['update']);
@@ -143,13 +152,8 @@ function updateRunning() {
         $('#circle').css('background', 'red');
     }
 }
-function getSelectedName() {
-    var select = document.getElementById("brewname");
-    if (!select.length) return '';
-    return select.options[select.selectedIndex].text;
-}
 function removeBrew() {
-    var n = getSelectedName();
+    var n = getSelectedName("brewname");
     if (!n.length) return;
     if (n == activeBrew) {
         alert('can\'t remove active brew!');
@@ -190,6 +194,12 @@ function newBrew() {
     data['active'] = name;
     data['running'] = true;
     $.post('status', JSON.stringify(data));
+}
+function addComment() {
+    $.post('comment', JSON.stringify({
+        'sensor': getSelectedName('comment_sensors'),
+        'comment': document.getElementById("comment").value,
+     }), recvStatus);
 }
 function saveConfig() {
     var sdata = {};
