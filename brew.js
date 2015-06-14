@@ -1,4 +1,6 @@
 // TODO
+// allow comments on active sensors not present
+// sensor removal
 // comment feedback on addition
 // write none when reading sensor fails
 // external temp display

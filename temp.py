@@ -15,6 +15,7 @@ from os import curdir, sep, listdir, path
 import datetime;
 import subprocess;
 import threading;
+import tm1637
 
 shutdown_pin    = 7
 datadir         = 'data'
