@@ -3,7 +3,6 @@
 // sensor removal
 // comment feedback on addition
 // write none when reading sensor fails
-// external temp display
 // temp control
 
 var graphInterval = 60;
@@ -102,7 +101,10 @@ function recvStatus(data) {
         if (!found) {
             $('#sensor_list').append(
                 '<tr>'
-                + '<td class=enabled><input type=checkbox class=enabled ' + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
+                + '<td class=lcd><input type=radio name=lcd class=lcd '
+                    + ((s['lcd'] == si) ? 'checked=1' : '') + ' onclick="lcdChanged(\'' + si + '\')" /></td>'
+                + '<td class=enabled><input type=checkbox class=enabled '
+                    + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
                 + '<td class=id>' + si + '</td>'
                 + '<td class=value><b>' + sensor['curr'] + '</b></td>'
                 + '<td><input class=min style="width:40px" type=text value="' + sensor['min'] + '"></td>'
@@ -202,6 +204,11 @@ function addComment() {
         'sensor': getSelectedName('comment_sensors'),
         'comment': document.getElementById("comment").value,
      }), recvStatus);
+}
+function lcdChanged(sensorName) {
+    $.post('lcd', JSON.stringify({
+        'sensor': sensorName,
+     }));
 }
 function saveConfig() {
     var sdata = {};

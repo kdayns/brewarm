@@ -32,6 +32,7 @@ config = {
 }
 
 # private
+lcd = None
 csv = None
 comment = None
 latest = []
@@ -44,6 +45,10 @@ subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 subprocess.call(['hwclock', '-s']) # load clock from rtc
 os.chdir('/root/brewarm')
+
+lcd = tm1637.TM1637(16,15, tm1637.BRIGHT_HIGHEST)
+lcd.ShowDoublepoint(True)
+lcd.Clear()
 
 def update_config():
     global debug, config
@@ -59,6 +64,7 @@ def update_config():
 if path.isfile('config'):
     config = json.loads(open('config').read())
     config['brewfiles'] = []
+    if not 'lcd' in config: config['lcd'] = ''
     if not 'debug' in config: config['debug'] = True
     if not 'decimate' in config: config['decimate'] = 4
     if not 'sync' in config: config['sync'] = 60 * 60
@@ -69,6 +75,8 @@ if path.isfile('config'):
          for k,v in config['sensors'].items():
              s[k] = { 'name':v[0], 'curr':v[1], 'avg':v[2], 'enabled':v[3], 'min':-20, 'max':100 }
          config['sensors'] = s
+    # drop unconfigured sensors
+    config['sensors'] = { k : v for k,v in config['sensors'].items() if k != v['name'] }
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
@@ -96,6 +104,10 @@ def thread_update_temp(k, d):
 
     if v == None: v = 0
     if debug: print("data: %s %s " % (k, v))
+    if config['lcd'] == k:
+        la = [int(i) for i in list(str(round(v, 2)).replace('.', ''))]
+        for i in range(4 - len(la)): la.append(0)
+        lcd.Show(la)
     return
 
 def sync(toTemp = False):
@@ -327,6 +339,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             print('post: ' + postVars)
 
         if self.path == '/comment': self.handleComment(postVars)
+        elif self.path == '/lcd': self.handleLCD(postVars)
         else: self.handleConfig(postVars)
 
     def handleComment(self, postVars):
@@ -345,6 +358,26 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         comment['sensor'] = post['sensor']
         comment['string'] = post['comment']
         event.set()
+
+        self.send_response(200)
+        self.end_headers()
+        return
+
+    def handleLCD(self, postVars):
+        global lcd, config
+
+        post = json.loads(postVars)
+        config['lcd'] = post['sensor']
+        print('LCD senros: ' + config['lcd'])
+
+        update_config()
+        event.set()
+
+        if lcd == None: return
+
+        if not lcd.connected():
+            self.send_error(500,'Not connected!')
+            return
 
         self.send_response(200)
         self.end_headers()
@@ -377,6 +410,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                 if config['sensors'][k]['min'] != v[2]: config['sensors'][k]['min'] = int(v[2])
                 if config['sensors'][k]['max'] != v[3]: config['sensors'][k]['max'] = int(v[3])
             lock.release()
+        if 'lcd' in nc: config['lcd'] = nc['lcd']
         if 'active' in nc: config['active'] = nc['active']
         if 'running' in nc: config['running'] = nc['running']
         if 'update' in nc: config['update'] = int(nc['update'])
