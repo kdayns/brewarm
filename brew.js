@@ -1,5 +1,4 @@
 // TODO
-// allow comments on active sensors not present
 // sensor removal
 // comment feedback on addition
 // write none when reading sensor fails
@@ -93,10 +92,10 @@ function recvStatus(data) {
         var sensor = sensors[si];
         var found = false;
         $("#sensor_list td.id").each(function(i, tr) {
-             if ($(tr).html() == si) {
-                 found = true;
-                 $("#sensor_list td.value").eq(i).html('<b>' + sensor['curr'] + '</b>');
-             }
+             if ($(tr).html() != si) return;
+
+             found = true;
+             $("#sensor_list td.value").eq(i).html('<b>' + sensor['curr'] + '</b>');
         });
         if (!found) {
             $('#sensor_list').append(
@@ -111,7 +110,6 @@ function recvStatus(data) {
                 + '<td><input class=max style="width:40px" type=text value="' + sensor['max'] + '"></td>'
                 + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
                 + '</tr>');
-            $('#comment_sensors').append('<option>' + sensor['name'] + '</option>');
         }
     }
     var u = $('#update');
@@ -283,6 +281,7 @@ function loadBrewData(csv) {
             lt.for = i - 1;
             lt.innerHTML = sl[i];
             labels.appendChild(lt);
+            $('#comment_sensors').append('<option>' + sl[i] + '</option>');
         }
     }
     g.ready(brewReady);
