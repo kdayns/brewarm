@@ -340,6 +340,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
 
         if self.path == '/comment': self.handleComment(postVars)
         elif self.path == '/lcd': self.handleLCD(postVars)
+        elif self.path == '/remove': self.handleRemove(postVars)
         else: self.handleConfig(postVars)
 
     def handleComment(self, postVars):
@@ -368,7 +369,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
 
         post = json.loads(postVars)
         config['lcd'] = post['sensor']
-        print('LCD senros: ' + config['lcd'])
+        print('LCD sensor: ' + config['lcd'])
 
         update_config()
         event.set()
@@ -378,6 +379,18 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         if not lcd.connected():
             self.send_error(500,'Not connected!')
             return
+
+        self.send_response(200)
+        self.end_headers()
+        return
+
+    def handleRemove(self, postVars):
+        global config
+        post = json.loads(postVars)
+        print('remove sensor: ' + post['sensor'])
+
+        config['sensors'] = { k : v for k,v in config['sensors'].items() if k != post['sensor'] }
+        update_config()
 
         self.send_response(200)
         self.end_headers()

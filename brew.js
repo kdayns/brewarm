@@ -1,5 +1,4 @@
 // TODO
-// sensor removal
 // comment feedback on addition
 // write none when reading sensor fails
 // temp control
@@ -109,6 +108,7 @@ function recvStatus(data) {
                 + '<td><input class=min style="width:40px" type=text value="' + sensor['min'] + '"></td>'
                 + '<td><input class=max style="width:40px" type=text value="' + sensor['max'] + '"></td>'
                 + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
+                + '<td><button onclick="removeSensor(\'' + si + '\', this.parentNode.parentNode.rowIndex)">x</button></tb>'
                 + '</tr>');
         }
     }
@@ -203,9 +203,16 @@ function addComment() {
         'comment': document.getElementById("comment").value,
      }), recvStatus);
 }
-function lcdChanged(sensorName) {
+function lcdChanged(sensorId) {
     $.post('lcd', JSON.stringify({
-        'sensor': sensorName,
+        'sensor': sensorId,
+     }));
+}
+function removeSensor(sensorId, rowIdx) {
+    if (!confirm('really remove ' + sensorId + '?')) return;
+    document.getElementById("sensor_list").deleteRow(rowIdx);
+    $.post('remove', JSON.stringify({
+        'sensor': sensorId,
      }));
 }
 function saveConfig() {
