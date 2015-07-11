@@ -414,7 +414,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                     if b == nc['name']: config['brewfiles'].remove(b)
             self.send_response(200)
             self.end_headers()
-            return;
+            return
         if 'sensors' in nc:
             lock.acquire()
             for k,v in nc['sensors'].items():
@@ -433,7 +433,10 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             try:
                 datetime.datetime.strptime(nc['date'], '%Y/%m/%d %H:%M:%S')
                 subprocess.call(['date', '-s', nc['date']])
-            except: print('bad date passed: ' + nc['date'])
+            except:
+                self.send_error(500, 'Bad date format!')
+                print('bad date passed: ' + nc['date'])
+                return
         update_config()
         event.set()
         self.sendStatus()
