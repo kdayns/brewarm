@@ -181,7 +181,7 @@ function newBrew() {
     var found = false;
     var table = document.getElementById("sensor_list");
     for (var i = 0, row; row = table.rows[i]; i++) {
-        if (row.cells[0].getElementsByClassName('enabled')[0].checked) {
+        if (row.cells[1].getElementsByClassName('enabled')[0].checked) {
             found = true;
             break;
         }
@@ -219,11 +219,11 @@ function saveConfig() {
     var sdata = {};
     var table = document.getElementById("sensor_list");
     for (var i = 0, row; row = table.rows[i]; i++) {
-        sdata[row.cells[1].innerHTML] = [
-            row.cells[5].getElementsByClassName('name')[0].value,
-            row.cells[0].getElementsByClassName('enabled')[0].checked,
-            row.cells[3].getElementsByClassName('min')[0].value,
-            row.cells[4].getElementsByClassName('max')[0].value,
+        sdata[row.cells[2].innerHTML] = [
+            row.cells[6].getElementsByClassName('name')[0].value,
+            row.cells[1].getElementsByClassName('enabled')[0].checked,
+            row.cells[4].getElementsByClassName('min')[0].value,
+            row.cells[5].getElementsByClassName('max')[0].value,
             ];
     }
     // TODO - verify date
