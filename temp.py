@@ -167,7 +167,7 @@ def thread_temp():
                         csv = open('/tmp/' + config['active'], 'a+')
                     else: csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
                     size = csv.tell()
-                    if size:
+                    if 1:
                         print('appending: ' + config['active'])
                         # get used sensors
                         csv.seek(0, io.SEEK_SET)
@@ -194,15 +194,6 @@ def thread_temp():
                                 print('time adjust')
                                 subprocess.call(['date', '-s', tail])
                         csv.seek(0, io.SEEK_END)
-                    else:
-                        lock.acquire()
-                        for k,d in sensors.items():
-                            if d['enabled']: asens.append(k)
-                        lock.release()
-                        print('new data file: ' + config['active'] + ' sensors: ' + str(len(asens)))
-                        csv.write('#date')
-                        for s in asens: csv.write(',' + sensors[s]['name'])
-                        csv.write('\n')
                     lastActive = config['active']
                 except:
                     raise
@@ -424,7 +415,26 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                 if config['sensors'][k]['max'] != v[3]: config['sensors'][k]['max'] = int(v[3])
             lock.release()
         if 'lcd' in nc: config['lcd'] = nc['lcd']
-        if 'active' in nc: config['active'] = nc['active']
+        if 'active' in nc:
+            if config['active'] != nc['active']:
+                sensors = config['sensors']
+                asens = []
+                lock.acquire()
+                for k,d in sensors.items():
+                    if d['enabled']: asens.append(k)
+                print('new data file: ' + nc['active'] + ' sensors: ' + str(len(asens)))
+                if config['sync']:
+                    sync(True)
+                    csv = open('/tmp/' + nc['active'], 'a+')
+                else: csv = open(datadir + '/' + nc['active'] + '.csv', 'a+')
+                csv.write('#date')
+                for s in asens: csv.write(',' + sensors[s]['name'])
+                lock.release()
+                csv.write('\n')
+                csv.close()
+                sync()
+                config['active'] = nc['active']
+                config['brewfiles'].append(config['active'])
         if 'running' in nc: config['running'] = nc['running']
         if 'update' in nc: config['update'] = int(nc['update'])
         if 'debug' in nc: config['debug'] = nc['debug']

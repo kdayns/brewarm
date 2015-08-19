@@ -80,7 +80,7 @@ function recvStatus(data) {
     running = s['running'];
     if (s["active"] != activeBrew) {
         activeBrew = s["active"];
-        if (recvStatus.firstTime) {
+        if (recvStatus.firstTime || selectedBrew == '') {
             loadBrew(activeBrew);
             $('#brewname').val(activeBrew);
         }
@@ -155,6 +155,7 @@ function updateRunning() {
     }
 }
 function removeBrew() {
+    var select = document.getElementById('brewname');
     var n = getSelectedName("brewname");
     if (!n.length) return;
     if (n == activeBrew) {
@@ -165,8 +166,8 @@ function removeBrew() {
 
     select.remove(select.selectedIndex);
     if (select.length) {
-        select.selectedIndex = 0;
-        brewChanged(select.options[0].text);
+        select.selectedIndex = select.length - 1;
+        brewChanged(select.options[select.length - 1].text);
     } else {
         $('#stop').attr("disabled", true);
         $('#start').attr("disabled", true);
@@ -192,6 +193,7 @@ function newBrew() {
     }
 
     data = {}
+    selectedBrew = '';
     var name = prompt("new brew's name", 'brew_XX');
     data['active'] = name;
     data['running'] = true;
