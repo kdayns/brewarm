@@ -1,5 +1,4 @@
 // TODO
-// comment feedback on addition
 // write none when reading sensor fails
 // temp control
 
@@ -200,10 +199,14 @@ function newBrew() {
     $.post('status', JSON.stringify(data));
 }
 function addComment() {
+    var c = document.getElementById("comment");
+    var cf = document.getElementById("comment_feedback");
+    cf.innerHTML = '';
     $.post('comment', JSON.stringify({
         'sensor': getSelectedName('comment_sensors'),
-        'comment': document.getElementById("comment").value,
-     }), recvStatus);
+        'comment': c.value,
+     }), function() { cf.innerHTML = 'OK'; });
+    c.setSelectionRange(0, c.value.length);
 }
 function lcdChanged(sensorId) {
     $.post('lcd', JSON.stringify({

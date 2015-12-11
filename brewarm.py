@@ -86,6 +86,7 @@ if path.isfile('.clean_shutdown'):
 debug = config['debug']
 
 def thread_update_temp(k, d):
+    global lcd
     decimate = config['decimate']
 
     v = None
@@ -104,7 +105,7 @@ def thread_update_temp(k, d):
 
     if v == None: v = 0
     if debug: print("data: %s %s " % (k, v))
-    if config['lcd'] == k:
+    if config['lcd'] == k and lcd is not None:
         la = [int(i) for i in list(str(round(v, 2)).replace('.', ''))]
         for i in range(4 - len(la)): la.append(0)
         lcd.Show(la)
