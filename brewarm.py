@@ -43,7 +43,6 @@ lastSync = datetime.datetime.now()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
-subprocess.call(['hwclock', '-s']) # load clock from rtc
 os.chdir('/root/brewarm')
 
 lcd = tm1637.TM1637(16,15, tm1637.BRIGHT_HIGHEST)
@@ -84,6 +83,7 @@ if path.isfile('.clean_shutdown'):
     os.remove('.clean_shutdown')
 
 debug = config['debug']
+subprocess.call(['hwclock', '-s']) # load clock from rtc
 
 def thread_update_temp(k, d):
     global lcd
