@@ -16,6 +16,7 @@ import datetime;
 import subprocess;
 import threading;
 import tm1637
+from w1d import w1d
 
 shutdown_pin    = 7
 datadir         = 'data'
@@ -36,6 +37,7 @@ lcd = None
 csv = None
 comment = None
 latest = []
+sensors = []
 w1path = '/sys/bus/w1/devices/'
 lock = threading.Lock()
 event = threading.Event()
@@ -43,6 +45,7 @@ lastSync = datetime.datetime.now()
 
 subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
+subprocess.call(['modprobe', 'w1_ds2413'])
 os.chdir('/root/brewarm')
 
 lcd = tm1637.TM1637(16,15, tm1637.BRIGHT_HIGHEST)
@@ -50,14 +53,20 @@ lcd.ShowDoublepoint(True)
 lcd.Clear()
 
 def update_config():
-    global debug, config
+    global debug, config, sensors
 
     debug = config['debug']
     configx = copy.deepcopy(config)
-    print(json.dumps(configx, indent=True))
+
+    configx['sensors'] = {}
+    lock.acquire()
+    for s in sensors: configx['sensors'][s.id] = s.dict()
+    lock.release()
+
     if 'brewfiles' in configx: del configx['brewfiles']
     if 'date' in configx: del configx['date']
     if 'tail' in configx: del configx['tail']
+    print(json.dumps(configx, indent=True))
     open('config', 'w').write(json.dumps(configx, indent=True))
 
 if path.isfile('config'):
@@ -69,13 +78,21 @@ if path.isfile('config'):
     if not 'sync' in config: config['sync'] = 60 * 60
     if not 'i2c_bus' in config: config['i2c_bus'] = 0
     open('/sys/class/i2c-adapter/i2c-' + str(config['i2c_bus']) + '/new_device', 'w').write("ds1307 0x68")
+
+    # migrate
     if len(config['sensors']) and type(next(iter(config['sensors'].values()))) is not dict:
+         print('migrate list -> dict')
          s = {}
          for k,v in config['sensors'].items():
              s[k] = { 'name':v[0], 'curr':v[1], 'avg':v[2], 'enabled':v[3], 'min':-20, 'max':100 }
          config['sensors'] = s
     # drop unconfigured sensors
     config['sensors'] = { k : v for k,v in config['sensors'].items() if k != v['name'] }
+
+    for k,v in config['sensors'].items():
+        sensors.append(w1d(k, v))
+
+    del config['sensors']
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
@@ -85,27 +102,23 @@ if path.isfile('.clean_shutdown'):
 debug = config['debug']
 subprocess.call(['hwclock', '-s']) # load clock from rtc
 
-def thread_update_temp(k, d):
+def thread_update_temp(s):
     global lcd
     decimate = config['decimate']
 
     v = None
     for i in range(decimate):
-        try: val = open(w1path + k + '/w1_slave').read()
-        except:
-            print('read sensor %s failed: %s ' % (k, str(sys.exc_info()[0])))
+        v = s.read()
+        if v is None:
             # TODO - write empty reading
-            d['curr'] = d['min']
-            d['avg'] = d['min']
-            return
-        pos = val.find('t=')
-        v = float(val[pos + 2:]) / 1000
-        d['curr'] = min(max(round(v, 3), d['min']), d['max'])
-        d['avg'] += d['curr']
+            s.avg = s.min
+            v = 0
+            break
+        s.avg += s.curr
 
-    if v == None: v = 0
-    if debug: print("data: %s %s " % (k, v))
+    if debug: print("data: %s %s " % (s.id, v))
     if config['lcd'] == k and lcd is not None:
+        # TODO - negative numbers
         la = [int(i) for i in list(str(round(v, 2)).replace('.', ''))]
         for i in range(4 - len(la)): la.append(0)
         lcd.Show(la)
@@ -125,21 +138,21 @@ def sync(toTemp = False):
             print("temp not present")
 
 def thread_temp():
-    global config, csv, event, latest, lastSync, comment
-    sensors = config['sensors']
+    global config, sensors, csv, event, latest, lastSync, comment
     lastActive = ''
-    asens = []
 
     while True:
         lock.acquire()
-        for k,d in sensors.items(): d['avg'] = 0
+        for s in sensors:
+            if s.isTemp(): s.avg = 0
 
         rthreads = []
-        for k,d in sensors.items():
-            if not d['enabled']:
-                d['curr'] = None
+        for s in sensors:
+            if not s.isTemp(): continue
+            if not s.enabled:
+                s.curr = None
                 continue
-            th = threading.Thread(daemon=True, target=thread_update_temp, args=(k, d,))
+            th = threading.Thread(daemon=True, target=thread_update_temp, args=(s,))
             th.start()
             rthreads.append(th)
         lock.release()
@@ -149,16 +162,17 @@ def thread_temp():
         # write file
         if config['running'] == False:
             latest = []
-            asens = []
             lastActive = ''
             if csv != None:
                 csv.close()
                 csv = None
+                lock.acquire()
+                for s in sensors: s.used = 0
+                lock.release()
                 sync()
         else:
             if lastActive != config['active']:
                 latest = []
-                asens = []
                 if csv != None:
                     csv.close()
                     sync()
@@ -168,33 +182,38 @@ def thread_temp():
                         csv = open('/tmp/' + config['active'], 'a+')
                     else: csv = open(datadir + '/' + config['active'] + '.csv', 'a+')
                     size = csv.tell()
-                    if 1:
-                        print('appending: ' + config['active'])
-                        # get used sensors
-                        csv.seek(0, io.SEEK_SET)
-                        l = csv.readline().strip()
-                        if l[:6] != '#date,': raise
-                        l = l[6:]
-                        lock.acquire()
-                        for s in l.split(','):
-                            for k,d in sensors.items():
-                                if s == d['name']:
-                                    asens.append(k)
-                                    break
-                        lock.release()
-                        # date recovery
-                        csv.seek(size - min(128, size), io.SEEK_SET)
-                        tail = csv.read(128)
-                        if len(tail) > 5 and tail.rfind('\n', 0, -2) != -1:
-                            tail = tail[tail.rfind('\n', 0, -2) + 1:].strip()
-                            if debug: print('tail: ' + tail)
-                            tail = tail[:tail.find(',')]
-                            last = datetime.datetime.strptime(tail, '%Y/%m/%d %H:%M:%S')
-                            if debug: print('last: ' + str(last))
-                            if last > datetime.datetime.now():
-                                print('time adjust')
-                                subprocess.call(['date', '-s', tail])
-                        csv.seek(0, io.SEEK_END)
+
+                    print('appending: ' + config['active'])
+                    # get used sensors
+                    csv.seek(0, io.SEEK_SET)
+                    l = csv.readline().strip()
+                    if l[:6] != '#date,': raise
+                    l = l[6:]
+
+                    lock.acquire()
+                    for s in sensors: s.used = 0
+                    idx = 1
+                    for item in l.split(','):
+                        for s in sensors:
+                            if s.name == item:
+                                s.used = idx
+                                idx += 1
+                                break
+                    lock.release()
+
+                    # date recovery
+                    csv.seek(size - min(128, size), io.SEEK_SET)
+                    tail = csv.read(128)
+                    if len(tail) > 5 and tail.rfind('\n', 0, -2) != -1:
+                        tail = tail[tail.rfind('\n', 0, -2) + 1:].strip()
+                        if debug: print('tail: ' + tail)
+                        tail = tail[:tail.find(',')]
+                        last = datetime.datetime.strptime(tail, '%Y/%m/%d %H:%M:%S')
+                        if debug: print('last: ' + str(last))
+                        if last > datetime.datetime.now():
+                            print('time adjust')
+                            subprocess.call(['date', '-s', tail])
+                    csv.seek(0, io.SEEK_END)
                     lastActive = config['active']
                 except:
                     raise
@@ -209,25 +228,30 @@ def thread_temp():
                 now = datetime.datetime.now()
                 newdata.append(int(now.timestamp() * 1000))
                 csv.write(now.strftime('%Y/%m/%d %H:%M:%S'))
-                for s in asens:
-                    if not sensors[s]['enabled']:
+
+                lock.acquire()
+                ssens = copy.deepcopy(sensors)
+                ssens.sort(key=lambda s: s.used)
+                for s in ssens:
+                    if not s.used: continue
+                    if not s.enabled:
                         v = None
                         csv.write(',')
                     else:
-                        v = round(sensors[s]['avg'] / config['decimate'], 3)
+                        v = round(s.avg / config['decimate'], 3)
                         csv.write(',' + str(v))
                     newdata.append(v)
 
                 if comment != None:
                     i = 0
-                    for s in asens:
-                        if sensors[s]['name'] != comment['sensor']:
+                    for s in sensors:
+                        if s.name != comment['sensor']:
                             i = i + 1
                             continue
                         csv.write(' #' + str(i) + ' ' + comment['string'])
-                        i = i + 1
                         break
                     comment = None
+                lock.release()
 
                 csv.write('\n')
                 csv.flush()
@@ -261,8 +285,7 @@ def thread_shutdown():
     return
 
 def thread_discovery():
-    global config
-    sensors = config['sensors']
+    global config, sensors
     brews = config['brewfiles']
 
     while True:
@@ -272,11 +295,18 @@ def thread_discovery():
             if f == 'w1_bus_master1': continue
 
             lock.acquire()
-            if not f in sensors.keys():
+            exists = False
+            for s in sensors:
+                if s.id == f:
+                    exists = True
+                    break
+
+            if not exists:
                 print("new sensor: " + f)
                 found = True
-                sensors[f] = { 'name':f, 'curr':0, 'avg':0, 'enabled':True, 'min':-20, 'max':100 }
+                sensors.append(w1d(f))
             lock.release()
+
         if found:
             update_config()
             event.set()
@@ -292,11 +322,17 @@ def thread_discovery():
 
 class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
     def sendStatus(self):
-        global config, latest
+        global config, latest, sensors
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        status = config
+
+        status = copy.deepcopy(config)
+        status['sensors'] = {}
+        lock.acquire()
+        for s in sensors:
+            status['sensors'][s.id] = s.dict()
+        lock.release()
         status['tail'] = latest
         status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         self.wfile.write(bytearray(json.dumps(status), 'utf-8'))
@@ -336,7 +372,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         else: self.handleConfig(postVars)
 
     def handleComment(self, postVars):
-        global comment, config
+        global comment, config, sensors
         if comment != None:
             self.send_error(500,'Comment pending!')
             return
@@ -344,7 +380,18 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         if config['running'] == False:
             self.send_error(500,'Not running')
             return
-        #TODO - check if sensor active
+
+        lock.acquire()
+        active = False
+        for s in sensors:
+            if s.id == post['sensor']:
+                active = s.used
+                break
+        lock.release()
+
+        if active == False:
+            self.send_error(500,'Sensor not used in current brew!')
+            return
 
         post = json.loads(postVars)
         comment = {}
@@ -377,11 +424,17 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         return
 
     def handleRemove(self, postVars):
-        global config
+        global sensors
         post = json.loads(postVars)
         print('remove sensor: ' + post['sensor'])
 
-        config['sensors'] = { k : v for k,v in config['sensors'].items() if k != post['sensor'] }
+        lock.acquire()
+        for s in sensors:
+            if s.id == post['sensor']:
+                sensors.remove(s)
+                break;
+        lock.release()
+
         update_config()
 
         self.send_response(200)
@@ -389,8 +442,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         return
 
     def handleConfig(self, postVars):
-        if debug:
-            print('current config: ' + json.dumps(config))
+        global sensors, config, debug
 
         nc = json.loads(postVars)
         if 'command' in nc:
@@ -407,35 +459,51 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.end_headers()
             return
+
+        if debug: print('current config: ' + json.dumps(config))
+
         if 'sensors' in nc:
             lock.acquire()
             for k,v in nc['sensors'].items():
-                if config['sensors'][k]['name'] != v[0]: config['sensors'][k]['name'] = v[0]
-                if config['sensors'][k]['enabled'] != v[1]: config['sensors'][k]['enabled'] = v[1]
-                if config['sensors'][k]['min'] != v[2]: config['sensors'][k]['min'] = int(v[2])
-                if config['sensors'][k]['max'] != v[3]: config['sensors'][k]['max'] = int(v[3])
+                for s in sensors:
+                    if not s.id == k: continue
+
+                    if debug: print('updating ' + s.name + ' ' + json.dumps(v))
+                    if s.name != v[0]: s.name = v[0]
+                    if s.enabled != v[1]: s.enabled = v[1]
+
+                    if s.isTemp():
+                        if s.min != v[2]: s.min = int(v[2])
+                        if s.max != v[3]: s.max = int(v[3])
+                    break;
             lock.release()
+
         if 'lcd' in nc: config['lcd'] = nc['lcd']
-        if 'active' in nc:
-            if config['active'] != nc['active']:
-                sensors = config['sensors']
-                asens = []
-                lock.acquire()
-                for k,d in sensors.items():
-                    if d['enabled']: asens.append(k)
-                print('new data file: ' + nc['active'] + ' sensors: ' + str(len(asens)))
+        if 'active' in nc and config['active'] != nc['active']:
+                print('new data file: ' + nc['active'])
+
                 if config['sync']:
                     sync(True)
                     csv = open('/tmp/' + nc['active'], 'a+')
                 else: csv = open(datadir + '/' + nc['active'] + '.csv', 'a+')
                 csv.write('#date')
-                for s in asens: csv.write(',' + sensors[s]['name'])
+
+                lock.acquire()
+                idx = 1
+                for s in sensors:
+                    if s.enabled:
+                        s.used = idx
+                        idx += 1
+                        csv.write(',' + s.name)
+                    else: s.used = 0
                 lock.release()
+
                 csv.write('\n')
                 csv.close()
                 sync()
                 config['active'] = nc['active']
                 config['brewfiles'].append(config['active'])
+
         if 'running' in nc: config['running'] = nc['running']
         if 'update' in nc: config['update'] = int(nc['update'])
         if 'debug' in nc: config['debug'] = nc['debug']
