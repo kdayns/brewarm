@@ -92,6 +92,7 @@ if path.isfile('config'):
     for k,v in config['sensors'].items():
         sensors.append(w1d(k, v))
 
+    sensors.sort(key=lambda s: s.id, reverse=True)
     del config['sensors']
 
 if path.isfile('.clean_shutdown'):
@@ -328,10 +329,10 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
         status = copy.deepcopy(config)
-        status['sensors'] = {}
+        status['sensors'] = []
         lock.acquire()
         for s in sensors:
-            status['sensors'][s.id] = s.dict()
+            status['sensors'].append(s.dict())
         lock.release()
         status['tail'] = latest
         status['date'] = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')

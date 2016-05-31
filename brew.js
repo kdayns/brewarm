@@ -86,8 +86,9 @@ function recvStatus(data) {
     }
     updateRunning();
     var sensors = s["sensors"];
-    for (var si in sensors) {
-        var sensor = sensors[si];
+    for (var i in sensors) {
+        var sensor = sensors[i];
+        var si = sensor.id;
         var found = false;
         $("#sensor_list td.id").each(function(i, tr) {
              if ($(tr).html() != si) return;
@@ -163,6 +164,8 @@ function removeBrew() {
     }
     if (!confirm('really remove ' + n + '?')) return;
 
+    $.post('status', JSON.stringify({ 'command': 'kill', 'name': n }));
+
     select.remove(select.selectedIndex);
     if (select.length) {
         select.selectedIndex = select.length - 1;
@@ -175,7 +178,6 @@ function removeBrew() {
         // TODO - clear graph
         //g.updateOptions({ 'file': [] } );
     }
-    $.post('status', JSON.stringify({ 'command': 'kill', 'name': n }));
 }
 function newBrew() {
     var found = false;
