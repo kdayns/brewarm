@@ -5,7 +5,17 @@ from os import curdir, sep, listdir, path
 
 w1path = '/sys/bus/w1/devices/'
 
+#IOA fe IOB fd on, ff off
+IOA = 0x1
+IOA_STATUS = 0x02
+IOB = 0x2
+IOB_STATUS = 0x08
+
 class w1d:
+
+    def isTemp(self): return self.dev == 'ds18b20'
+    def isSwitch(self): return self.dev == 'ds2413'
+
     def __init__(self, _id, _dictstr = None):
         self.id = _id
         self.name = _id
@@ -30,34 +40,50 @@ class w1d:
             self.name = _dictstr['name']
             self.enabled = _dictstr['enabled']
 
-            if self.dev == 'ds18b20':
+            if self.isTemp():
                 self.curr = _dictstr['curr']
                 self.avg = _dictstr['avg']
                 self.min = _dictstr['min']
                 self.max = _dictstr['max']
-
-    def isTemp(self):
-        return self.dev == 'ds18b20'
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
                 if not key.startswith('__') and not callable(value) }
 
     def read(self):
-        if self.dev == 'ds18b20':
+        if self.isTemp():
             try: val = open(w1path + self.id + '/w1_slave').read()
             except:
                 print('read sensor %s failed: %s ' % (self.id, str(sys.exc_info()[0])))
                 self.curr = self.min
-                return None
+                return False
 
             pos = val.find('t=')
             v = float(val[pos + 2:]) / 1000
             self.curr = min(max(round(v, 3), self.min), self.max)
-            return v
+            return True
 
-        elif self.dev == 'ds2413':
-            # TODO
-            return None
+        elif self.isSwitch():
+            try: val = ord(open(w1path + self.id + '/state', 'rb').read(1))
+            except:
+                print('read switch %s failed: %s ' % (self.id, str(sys.exc_info()[0])))
+                self.curr = 0
+                return False
 
-        return None
+            self.curr = not (val & IOB_STATUS)
+            return True
+
+        return False
+
+    def write(self, value):
+        if not self.isSwitch(): return False
+
+        try: f = open(w1path + self.id + '/output', 'wb')
+        except:
+            print('write switch %s failed: %s ' % (self.id, str(sys.exc_info()[0])))
+            return False
+
+        b = ~ (IOB if value else 0) & 255
+        f.write(bytes([b]))
+
+        return True;

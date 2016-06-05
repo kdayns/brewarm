@@ -143,13 +143,15 @@ def thread_temp():
     lastActive = ''
 
     while True:
+        rthreads = []
         lock.acquire()
         for s in sensors:
-            if s.isTemp(): s.avg = 0
+            if not s.isTemp():
+                s.read()
+                print("state: " + str(s.curr))
+                continue
 
-        rthreads = []
-        for s in sensors:
-            if not s.isTemp(): continue
+            s.avg = 0
             if not s.enabled:
                 s.curr = None
                 continue
@@ -370,6 +372,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/comment': self.handleComment(postVars)
         elif self.path == '/lcd': self.handleLCD(postVars)
         elif self.path == '/remove': self.handleRemove(postVars)
+        elif self.path == '/toggle': self.handleToggle(postVars)
         else: self.handleConfig(postVars)
 
     def handleComment(self, postVars):
@@ -437,6 +440,23 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         lock.release()
 
         update_config()
+
+        self.send_response(200)
+        self.end_headers()
+        return
+
+    def handleToggle(self, postVars):
+        global sensors
+        post = json.loads(postVars)
+        print('toggle sensor: ' + post['sensor'])
+
+        lock.acquire()
+        for s in sensors:
+            if s.id == post['sensor']:
+                s.write(post['value'])
+                s.read()
+                break;
+        lock.release()
 
         self.send_response(200)
         self.end_headers()

@@ -1,7 +1,3 @@
-// TODO
-// write none when reading sensor fails
-// temp control
-
 var graphInterval = 60;
 var statusInterval = 5;
 var lastDays = 24 * 3600 * 3; // zoom on last days data
@@ -94,12 +90,19 @@ function recvStatus(data) {
              if ($(tr).html() != si) return;
 
              found = true;
-             $("#sensor_list td.value").eq(i).html('<b>' + sensor['curr'] + '</b>');
+             v = sensor['curr'];
+             if (sensor.dev == "ds18b20") {
+                 $("#sensor_list td.value").eq(i).html('<b>' + v + '</b>');
+             } else {
+                 $("#toggle_state" + si).prop('checked', v);
+             }
         });
-        if (!found) {
-            $('#sensor_list').append(
-                '<tr>'
-                + '<td class=lcd><input type=radio name=lcd class=lcd '
+        if (found) continue;
+
+        var tr = '<tr>';
+        if (sensor.dev == "ds18b20") {
+            tr +=
+                '<td class=lcd><input type=radio name=lcd class=lcd '
                     + ((s['lcd'] == si) ? 'checked=1' : '') + ' onclick="lcdChanged(\'' + si + '\')" /></td>'
                 + '<td class=enabled><input type=checkbox class=enabled '
                     + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
@@ -108,9 +111,37 @@ function recvStatus(data) {
                 + '<td><input class=min style="width:40px" type=text value="' + sensor['min'] + '"></td>'
                 + '<td><input class=max style="width:40px" type=text value="' + sensor['max'] + '"></td>'
                 + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
-                + '<td><button onclick="removeSensor(\'' + si + '\', this.parentNode.parentNode.rowIndex)">x</button></tb>'
-                + '</tr>');
+                + '<td><button onclick="removeSensor(\'' + si
+                    + '\', this.parentNode.parentNode.rowIndex)">x</button></td>'
+        } else {
+            tr +=
+                '<td class=toggle_mode>'
+                    + '<input type=checkbox class=toggle id=toggle_mode' + si + ' '
+                    + (sensor['mode'] ? 'checked=1' : '')
+                    + ' disabled=1 >'
+                    + '<label for=toggle_mode' + si + '>force</label></td>'
+                + '<td class=enabled><input type=checkbox class=enabled '
+                    + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
+                + '<td class=id>' + si + '</td>'
+                + '<td class=toggle_state>'
+                    + '<input type=checkbox class=toggle id=toggle_state' + si + ' '
+                    + (sensor['curr'] ? 'checked=1' : '')
+                    + ' onclick="toggleSensor(\'' + si + '\', this.checked)">'
+                    + '<label for=toggle_state' + si + '>on</label></td>'
+                + '<td><input class=set style="width:40px" type=text value="'
+                    + /* sensor['set'] */ '' + '" disabled=1 ></td>'
+                + '<td class=toggle_mode>'
+                    + '<input type=checkbox class=toggle id=toggle_mode' + si + ' '
+                    + (sensor['mode'] ? 'checked=1' : '')
+                    + ' disabled=1 >'
+                    + '<label for=toggle_mode' + si + '>heat</label></td>'
+                + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
+                + '<td><button onclick="removeSensor(\'' + si
+                    + '\', this.parentNode.parentNode.rowIndex)">x</button></td>'
         }
+
+        tr += '</tr>';
+        $('#sensor_list').append(tr);
     }
     var u = $('#update');
     if (!u.is(':focus')) u.val(s['update']);
@@ -222,16 +253,30 @@ function removeSensor(sensorId, rowIdx) {
         'sensor': sensorId,
      }));
 }
+function toggleSensor(sensorId, value) {
+    $.post('toggle', JSON.stringify({
+        'sensor': sensorId,
+        'value': value,
+     }));
+}
 function saveConfig() {
     var sdata = {};
     var table = document.getElementById("sensor_list");
     for (var i = 0, row; row = table.rows[i]; i++) {
-        sdata[row.cells[2].innerHTML] = [
+        var id = row.cells[2].innerHTML;
+        sdata[id] = [
             row.cells[6].getElementsByClassName('name')[0].value,
-            row.cells[1].getElementsByClassName('enabled')[0].checked,
-            row.cells[4].getElementsByClassName('min')[0].value,
-            row.cells[5].getElementsByClassName('max')[0].value,
+            row.cells[1].getElementsByClassName('enabled')[0].checked
             ];
+
+        if (row.cells[4].getElementsByClassName('min').length) {
+            sdata[id].push(row.cells[4].getElementsByClassName('min')[0].value);
+            sdata[id].push(row.cells[5].getElementsByClassName('max')[0].value);
+        } else {
+            sdata[id].push(row.cells[3].getElementsByClassName('toggle')[0].checked);
+            sdata[id].push(row.cells[4].getElementsByClassName('set')[0].value);
+            sdata[id].push(row.cells[5].getElementsByClassName('toggle')[0].checked);
+        }
     }
     // TODO - verify date
     data = { 'sensors': sdata,
