@@ -16,6 +16,7 @@ import datetime;
 import subprocess;
 import threading;
 import tm1637
+import email.utils as eut
 from w1d import w1d
 
 shutdown_pin    = 7
@@ -559,11 +560,22 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         else: m = mime[ext]
         if ext == '.csv': sync()
 
+        fn = curdir + sep + self.path
         try:
-            f = open(curdir + sep + self.path) 
+            ft = os.path.getmtime(fn)
+            if self.headers.get('If-Modified-Since'):
+                ts = datetime.datetime(*eut.parsedate(self.headers.get('If-Modified-Since'))[:6])
+                if ts >= datetime.datetime.utcfromtimestamp(round(ft)):
+                    self.send_response(304)
+                    self.end_headers()
+                    return
+
+            f = open(fn)
             self.send_response(200)
             self.send_header('Content-type', m)
             self.send_header('Content-Encoding', 'gzip')
+            self.send_header('Last-Modified', self.date_time_string(ft))
+            self.send_response(200)
             self.end_headers()
             self.wfile.write(gzip.compress(bytearray(f.read(), 'utf-8')))
             f.close()
