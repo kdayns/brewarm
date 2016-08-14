@@ -30,6 +30,7 @@ class w1d:
                 self.max = 100
                 self.dev = 'ds18b20'
             elif path.isfile(w1path + self.id + '/output'):
+                self.curr = 0
                 self.dev = 'ds2413'
             else:
                 self.dev = ''

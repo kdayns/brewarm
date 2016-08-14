@@ -6988,6 +6988,10 @@ Dygraph.parseFloat_ = function(x, opt_line_no, opt_line) {
   // If it was actually "NaN", return it as NaN.
   if (/^ *nan *$/i.test(x)) return NaN;
 
+  // If it was bool
+  if (/^false$/i.test(x)) return 0;
+  if (/^true$/i.test(x)) return 1;
+
   // Looks like a parsing error.
   var msg = "Unable to parse '" + x + "' as a number";
   if (opt_line !== undefined && opt_line_no !== undefined) {

@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 
 import gzip
 import sys
@@ -72,7 +72,6 @@ def update_config():
 
 if path.isfile('config'):
     config = json.loads(open('config').read())
-    config['brewfiles'] = []
     if not 'lcd' in config: config['lcd'] = ''
     if not 'debug' in config: config['debug'] = True
     if not 'decimate' in config: config['decimate'] = 4
@@ -101,6 +100,7 @@ if path.isfile('.clean_shutdown'):
     update_config()
     os.remove('.clean_shutdown')
 
+config['brewfiles'] = []
 debug = config['debug']
 subprocess.call(['hwclock', '-s']) # load clock from rtc
 
@@ -119,7 +119,7 @@ def thread_update_temp(s):
         s.avg += s.curr
 
     if debug: print("data: %s %s " % (s.id, v))
-    if config['lcd'] == k and lcd is not None:
+    if lcd is not None and config['lcd'] == k:
         # TODO - negative numbers
         la = [int(i) for i in list(str(round(v, 2)).replace('.', ''))]
         for i in range(4 - len(la)): la.append(0)
@@ -147,18 +147,17 @@ def thread_temp():
         rthreads = []
         lock.acquire()
         for s in sensors:
-            if not s.isTemp():
+            if s.isSwitch():
                 s.read()
                 print("state: " + str(s.curr))
-                continue
-
-            s.avg = 0
-            if not s.enabled:
-                s.curr = None
-                continue
-            th = threading.Thread(daemon=True, target=thread_update_temp, args=(s,))
-            th.start()
-            rthreads.append(th)
+            elif s.isTemp():
+                s.avg = 0
+                if not s.enabled:
+                    s.curr = None
+                    continue
+                th = threading.Thread(daemon=True, target=thread_update_temp, args=(s,))
+                th.start()
+                rthreads.append(th)
         lock.release()
 
         for th in rthreads: th.join()
@@ -241,7 +240,16 @@ def thread_temp():
                     if not s.enabled:
                         v = None
                         csv.write(',')
-                    else:
+                        continue
+
+                    if s.isSwitch():
+                        if s.curr:
+                            v = 1
+                            csv.write(',true')
+                        else:
+                            v = 0
+                            csv.write(',false')
+                    elif s.isTemp():
                         v = round(s.avg / config['decimate'], 3)
                         csv.write(',' + str(v))
                     newdata.append(v)
