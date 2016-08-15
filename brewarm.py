@@ -15,14 +15,13 @@ from os import curdir, sep, listdir, path
 import datetime;
 import subprocess;
 import threading;
-import tm1637
 import email.utils as eut
 from w1d import w1d
 
 shutdown_pin    = 7
 datadir         = 'data'
 PORT_NUMBER     = 80
-config = {
+defconfig = {
     'sensors'   : {},
     'active'    : '',
     'running'   : False,
@@ -32,6 +31,7 @@ config = {
     'sync'      : 60 * 60,
     'i2c_bus'   : 1,
 }
+config = copy.deepcopy(defconfig)
 
 # private
 lcd = None
@@ -48,10 +48,6 @@ subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
 subprocess.call(['modprobe', 'w1_therm'])
 subprocess.call(['modprobe', 'w1_ds2413'])
 os.chdir('/root/brewarm')
-
-lcd = tm1637.TM1637(16,15, tm1637.BRIGHT_HIGHEST)
-lcd.ShowDoublepoint(True)
-lcd.Clear()
 
 def update_config():
     global debug, config, sensors
@@ -72,12 +68,10 @@ def update_config():
 
 if path.isfile('config'):
     config = json.loads(open('config').read())
-    if not 'lcd' in config: config['lcd'] = ''
-    if not 'debug' in config: config['debug'] = True
-    if not 'decimate' in config: config['decimate'] = 4
-    if not 'sync' in config: config['sync'] = 60 * 60
-    if not 'i2c_bus' in config: config['i2c_bus'] = 0
-    open('/sys/class/i2c-adapter/i2c-' + str(config['i2c_bus']) + '/new_device', 'w').write("ds1307 0x68")
+    if not 'debug' in config: config['debug'] = defconfig['debug']
+    if not 'decimate' in config: config['decimate'] = defconfig['decimate']
+    if not 'sync' in config: config['sync'] = defconfig['sync']
+    if not 'i2c_bus' in config: config['i2c_bus'] = defconfig['i2c_bus']
 
     # migrate
     if len(config['sensors']) and type(next(iter(config['sensors'].values()))) is not dict:
@@ -102,7 +96,16 @@ if path.isfile('.clean_shutdown'):
 
 config['brewfiles'] = []
 debug = config['debug']
-subprocess.call(['hwclock', '-s']) # load clock from rtc
+
+if 0: # rpi lcd
+    import tm1637
+    lcd = tm1637.TM1637(16,15, tm1637.BRIGHT_HIGHEST)
+    lcd.ShowDoublepoint(True)
+    lcd.Clear()
+
+if 0: # hw clock
+    open('/sys/class/i2c-adapter/i2c-' + str(config['i2c_bus']) + '/new_device', 'w').write("ds1307 0x68")
+    subprocess.call(['hwclock', '-s']) # load clock from rtc
 
 def thread_update_temp(s):
     global lcd
@@ -419,14 +422,16 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
     def handleLCD(self, postVars):
         global lcd, config
 
+        if lcd == None:
+            self.send_error(500, 'Not present!')
+            return
+
         post = json.loads(postVars)
         config['lcd'] = post['sensor']
         print('LCD sensor: ' + config['lcd'])
 
         update_config()
         event.set()
-
-        if lcd == None: return
 
         if not lcd.connected():
             self.send_error(500,'Not connected!')
