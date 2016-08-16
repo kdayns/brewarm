@@ -1,17 +1,51 @@
 # brewarm
-Efficient temperature logging and displaying using w1 sensors, also supports cheap i2c 4digit led display on RPi with planned PID temperature control.  
-This project was inspired by BrewPi because it had problems rendering logs with many datapoints and lacked hardware simplicity, so I created something simpler to use with your raspberry or any other platform supporting w1 sensors on linux with requirements to hardware as little as possible - you need just to hook up your sensors, that's it!  
+Efficient temperature logging and displaying using w1 sensors with planned PID temperature control, also supports cheap i2c 4digit led display on RPi.
+Inspired by BrewPi but because of it's hardware complexity and slow log rendering with many datapoints I created something simpler to use with your raspberry or any other platform supporting w1 sensors on Linux with requirements to hardware as little as possible - you need just to hook up your sensors, that's it!
 "arm" in the name denotes that I am running it not only on RPi but also on other ARM platforms.
 
 ## features
+* uses csv format
 * reading temperature from linux sysfs filesystem
+* oversampling to increase accuracy
 * graphing multiple sensors on web ui using built in web server
+* logging can be paused but only for last session
 * commenting on data points
-* live graph updating using little network traffic to monitor temperature changes
-* logging to ram and synchronizing to permanent storage only at defined intervals or shutdown to lessen storage wearing
-* sensor data displaying on cheap 4digit lcd with TM1637 driver IC - supported only on R-PI because of RPi.GPIO library dependency
+* manual switch state control
+* live graph updating using little network traffic
+* logging is done to /tmp and synchronizing to permanent storage is done only at defined intervals or shutdown to lessen storage wearing
 * system shutdown using gpio pin
 * system time control
   * setting system clock from ui
   * force loading rtc clock on startup if exists
-  * if system time is in future it is set to last log entry time
+  * if system time is in future it is set to last log entry time to prevent log screwing
+* R-PI only - sensor data displaying on cheap 4digit lcd with TM1637 driver IC (RPi.GPIO library dependency)
+
+## WIP prioritized
+* switch state graphing
+* PID control for set temperature
+* sensor offset setting
+* fermentation profile
+
+## more info
+* sensors in log files are bound to ther name in configuration, changing sensor's name will prevent from correctly resuming session
+* shutdown from ui will stop logging session and it will not auto resume on next startup
+* saving configuration or adding comment also triggers reading sensors and storing data points
+* to start new logging session configure sensors and then click on "+" then ok
+* sensor configuration columns:
+    * lcd radio button - reading from this sensor will be displayed if lcd is present
+    * enabled check box - if logging for this sensor is active and if it should be added to new brew (addition later is not possible)
+    * id - w1 id
+    * state - current reading (updated at set update interval)
+    * min - clipping temp
+    * max - clipping temp
+    * name - friendly name of sensor which also binds it's id to log file entry
+    * remove button - delete sensor, present sensor will be readded by automatic discovery
+* switch configuration columns:
+    * unused - planned for PID override
+    * enabled check box - same as for temp sensor
+    * id
+    * state - current state also works as instant action button (red - off, green - on)
+    * unused - planned for PID set point
+    * unused - planned for PID control direction
+    * name
+    * remove button
