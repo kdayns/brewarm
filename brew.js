@@ -12,6 +12,7 @@ var rawdata = [];
 var g = new Dygraph(document.getElementById("graph"), "", {
     rollPeriod: 10,
     showRoller: true,
+    fillAlpha: 0.30,
 });
 
 updateStatus(true);

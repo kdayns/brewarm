@@ -24,9 +24,11 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * switch state graphing
 * PID control for set temperature
 * sensor offset setting
+* multiple switch state graphing
 * fermentation profile
 
 ## more info
+* switch state may appear incorrect when rolling average is used, which is 10 by default
 * sensors in log files are bound to ther name in configuration, changing sensor's name will prevent from correctly resuming session
 * shutdown from ui will stop logging session and it will not auto resume on next startup
 * saving configuration or adding comment also triggers reading sensors and storing data points
