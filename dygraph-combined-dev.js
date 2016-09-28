@@ -5025,7 +5025,6 @@ Dygraph.prototype.setXAxisOptions_ = function(isDate) {
  * 3. [ low value, center value, high value ]
  */
 Dygraph.prototype.parseCSV_ = function(data) {
-  var annotations = [];
   var ret = [];
   var line_delimiter = Dygraph.detectLineDelimiter(data);
   var lines = data.split(line_delimiter || "\n");
@@ -5116,20 +5115,6 @@ Dygraph.prototype.parseCSV_ = function(data) {
       for (j = 1; j < inFields.length; j++) {
         fields[j] = Dygraph.parseFloat_(inFields[j], i, line);
       }
-      // extract annotations
-      // format: #<sensor num><wht space><comment>
-      --j;
-      var c = inFields[j].indexOf('#');
-      if (c != -1) {
-          c = inFields[j].substr(c + 1, inFields[j].length);
-          var ann = {};
-          var sidx = c.indexOf(' ');
-          ann.text = c.substr(sidx + 1, c.length + sidx);
-          ann.series = this.attrs_.labels[parseInt(c) + 1];
-          ann.xval = fields[0];
-          ann.shortText = annotations.length.toString();
-          annotations.push(ann);
-      }
     }
     if (ret.length > 0 && fields[0] < ret[ret.length - 1][0]) {
       outOfOrder = true;
@@ -5166,7 +5151,6 @@ Dygraph.prototype.parseCSV_ = function(data) {
     ret.sort(function(a,b) { return a[0] - b[0]; });
   }
 
-  this.setAnnotations(annotations, true);
   return ret;
 };
 
