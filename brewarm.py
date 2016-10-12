@@ -304,6 +304,12 @@ def thread_discovery():
     brews = config['brewfiles']
 
     while True:
+        # monitor data dir
+        for f in listdir('data'):
+            if not f.endswith('.csv'): continue
+            f = f[:-4]
+            if not f in brews: brews.append(f)
+
         # monitor w1
         found = False
         for f in listdir(w1path):
@@ -325,12 +331,6 @@ def thread_discovery():
         if found:
             update_config()
             event.set()
-
-        # monitor data dir
-        for f in listdir('data'):
-            if not f.endswith('.csv'): continue
-            f = f[:-4]
-            if not f in brews: brews.append(f)
 
         threading.Event().wait(timeout=5)
     return

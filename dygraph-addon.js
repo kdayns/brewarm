@@ -117,6 +117,7 @@ Dygraph.prototype.parseCSV_ = function(data) {
   var xParser = Dygraph.dateParser;
   var expectedCols = this.attr_("labels").length;
   var outOfOrder = false;
+  binarySeries = [];
   for (var i = start; i < lines.length; i++) {
     var line = lines[i];
     line_no = i;
@@ -131,7 +132,12 @@ Dygraph.prototype.parseCSV_ = function(data) {
     {
       // Values are just numbers
       for (j = 1; j < inFields.length; j++) {
-        fields[j] = Dygraph.parseFloat_(inFields[j], i, line);
+        var f = inFields[j];
+        fields[j] = Dygraph.parseFloat_(f, i, line);
+        if (typeof(fields[j]) == 'boolean') {
+            fields[j] = fields[j] == true ? 1 : 0;
+            binarySeries[j] = 1;
+        }
       }
       // extract annotations
       // format: #<sensor num><wht space><comment>
@@ -161,6 +167,21 @@ Dygraph.prototype.parseCSV_ = function(data) {
     ret.push(fields);
   }
 
+  if (ret.length) {
+      for (var j = 1; j < ret[0].length; j++) {
+          if (!binarySeries[j]) continue;
+
+          var n = this.attrs_.labels[j];
+          var series = {}
+          series[n] = {
+                fillGraph: true,
+                highlightCircleSize: 0,
+                plotter: binaryFillPlotter,
+          };
+          this.updateOptions( { series } );
+      }
+  }
+
   if (outOfOrder) {
     console.warn("CSV is out of order; order it correctly to speed loading.");
     ret.sort(function(a,b) { return a[0] - b[0]; });
@@ -182,8 +203,8 @@ Dygraph.parseFloat_ = function(x, opt_line_no, opt_line) {
   if (/^ *nan *$/i.test(x)) return NaN;
 
   // If it was bool
-  if (/^false$/i.test(x)) return 0;
-  if (/^true$/i.test(x)) return 1;
+  if (/^false$/i.test(x)) return false;
+  if (/^true$/i.test(x)) return true;
 
   // Looks like a parsing error.
   var msg = "Unable to parse '" + x + "' as a number";
