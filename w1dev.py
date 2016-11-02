@@ -1,6 +1,7 @@
 #!/bin/env python3
 
 import sys
+import os
 from os import curdir, sep, listdir, path
 
 w1path = '/sys/bus/w1/devices/'
@@ -11,12 +12,13 @@ IOA_STATUS = 0x02
 IOB = 0x2
 IOB_STATUS = 0x08
 
-class w1d:
+class w1d():
 
     def isTemp(self): return self.dev == 'ds18b20'
     def isSwitch(self): return self.dev == 'ds2413'
 
     def __init__(self, _id, _dictstr = None):
+        self._mtime = 0
         self.id = _id
         self.name = _id
         self.used = False    # if used in active brew
@@ -49,7 +51,21 @@ class w1d:
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
-                if not key.startswith('__') and not callable(value) }
+                if not key.startswith('_') and not callable(value) }
+
+    def changed(self):
+        f = w1path + self.id
+        if self.isTemp(): f += '/w1_slave'
+        elif self.isSwitch(): f += '/state'
+        else: return False
+
+        try:
+            nt = os.stat(f).st_mtime
+            if nt == self._mtime: return False
+        except: return False
+
+        self._mtime = nt;
+        return True
 
     def read(self):
         if self.isTemp():
@@ -60,6 +76,8 @@ class w1d:
                 return False
 
             pos = val.find('t=')
+            if pos == -1: return False
+
             v = float(val[pos + 2:]) / 1000
             self.curr = min(max(round(v, 3), self.min), self.max)
             return True

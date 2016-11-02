@@ -16,9 +16,11 @@ import datetime;
 import subprocess;
 import threading;
 import email.utils as eut
+import w1dev
 from w1dev import w1d
 
-shutdown_pin    = 7
+testmode        = 0
+shutdown_pin    = None # gpio pin number 7
 datadir         = 'data'
 PORT_NUMBER     = 80
 defconfig = {
@@ -39,15 +41,17 @@ csv = None
 comment = None
 latest = []
 sensors = []
-w1path = '/sys/bus/w1/devices/'
 lock = threading.Lock()
 event = threading.Event()
 lastSync = datetime.datetime.now()
 
-subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
-subprocess.call(['modprobe', 'w1_therm'])
-subprocess.call(['modprobe', 'w1_ds2413'])
-os.chdir('/root/brewarm')
+if not testmode:
+    subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
+    subprocess.call(['modprobe', 'w1_therm'])
+    subprocess.call(['modprobe', 'w1_ds2413'])
+    os.chdir('/root/brewarm')
+else:
+    w1dev.w1path = '.' + w1dev.w1path
 
 def update_config():
     global debug, config, sensors
@@ -277,8 +281,20 @@ def thread_temp():
                     sync()
 
         if debug: print('waiting: ', config['update'])
-        event.wait(timeout=config['update'])
-        event.clear()
+
+        if testmode:
+            ch = False
+            while not ch:
+                lock.acquire()
+                for s in sensors:
+                    ch |= s.changed()
+                    if ch: break;
+                lock.release()
+            print("changed")
+            threading.Event().wait(timeout=1)
+        else:
+            event.wait(timeout=config['update'])
+            event.clear()
 
 def thread_shutdown():
     global config
@@ -296,7 +312,7 @@ def thread_shutdown():
             open('.clean_shutdown', 'w').close()
             subprocess.call(['shutdown', '-h', 'now'])
             return;
-        threading.Event().wait(timeout=1)
+        threading.Event().wait(timeout=5)
     return
 
 def thread_discovery():
@@ -312,8 +328,9 @@ def thread_discovery():
 
         # monitor w1
         found = False
-        for f in listdir(w1path):
+        for f in listdir(w1dev.w1path):
             if f == 'w1_bus_master1': continue
+            if not path.isdir(w1dev.w1path + '/' + f): continue
 
             lock.acquire()
             exists = False
@@ -612,7 +629,7 @@ class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     pass
 
 threading.Thread(daemon=True, target=thread_temp).start()
-threading.Thread(daemon=True, target=thread_shutdown).start()
+if shutdown_pin != None: threading.Thread(daemon=True, target=thread_shutdown).start()
 threading.Thread(daemon=True, target=thread_discovery).start()
 
 def signal_term_handler(signal, frame):
