@@ -16,7 +16,7 @@ import datetime;
 import subprocess;
 import threading;
 import email.utils as eut
-from w1d import w1d
+from w1dev import w1d
 
 shutdown_pin    = 7
 datadir         = 'data'
