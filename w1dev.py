@@ -1,10 +1,12 @@
 #!/bin/env python3
 
+from pids import Pid
 import sys
 import os
 from os import curdir, sep, listdir, path
 
 w1path = '/sys/bus/w1/devices/'
+pidTemp = None
 
 #IOA fe IOB fd on, ff off
 IOA = 0x1
@@ -12,7 +14,10 @@ IOA_STATUS = 0x02
 IOB = 0x2
 IOB_STATUS = 0x08
 
-class w1d():
+MODE_COOL = 0
+MODE_HEAT = 1
+
+class w1d(Pid):
 
     def isTemp(self): return self.dev == 'ds18b20'
     def isSwitch(self): return self.dev == 'ds2413'
@@ -34,6 +39,10 @@ class w1d():
             elif path.isfile(w1path + self.id + '/output'):
                 self.curr = 0
                 self.dev = 'ds2413'
+                self.set(0)
+                self.mode = MODE_COOL
+                self.tune(5, 0.25, -1.5)
+                self.range(-100, 100)
             else:
                 self.dev = ''
                 print('unknown device: ' + self.id)
@@ -48,6 +57,10 @@ class w1d():
                 self.avg = _dictstr['avg']
                 self.min = _dictstr['min']
                 self.max = _dictstr['max']
+            elif self.isSwitch():
+                self.set(_dictstr['setpoint'])
+                self.tune(_dictstr['Kp'], _dictstr['Ki'], _dictstr['Kd'])
+                self.range(-100, 100)
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
@@ -72,7 +85,8 @@ class w1d():
             try: val = open(w1path + self.id + '/w1_slave').read()
             except:
                 print('read sensor %s failed: %s ' % (self.id, str(sys.exc_info()[0])))
-                self.curr = self.min
+                self.curr = None
+                self.avg = None
                 return False
 
             pos = val.find('t=')
@@ -106,3 +120,13 @@ class w1d():
         f.write(bytes([b]))
 
         return True;
+
+    def pid(self):
+        if not self.isSwitch(): return False
+
+        self.step(1.0, pidTemp())
+        self.write(self.get() > 0)
+
+        print('PID out=' + str(self.get()) + "  t=" + str(pidTemp()))
+
+        return True

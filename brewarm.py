@@ -53,6 +53,16 @@ if not testmode:
 else:
     w1dev.w1path = '.' + w1dev.w1path
 
+def getMainTemp():
+    global config, sensors, lock
+    t = None
+    for s in sensors:
+        if s.isTemp() and s.name == config['main']:
+            t = s.avg
+            break
+    return t
+w1dev.pidTemp = lambda : getMainTemp()
+
 def update_config():
     global debug, config, sensors
 
@@ -85,7 +95,7 @@ if path.isfile('config'):
              s[k] = { 'name':v[0], 'curr':v[1], 'avg':v[2], 'enabled':v[3], 'min':-20, 'max':100 }
          config['sensors'] = s
     # drop unconfigured sensors
-    config['sensors'] = { k : v for k,v in config['sensors'].items() if k != v['name'] }
+    config['sensors'] = { k : v for k,v in config['sensors'].items() if k != v['name'] or v['enabled'] }
 
     for k,v in config['sensors'].items():
         sensors.append(w1d(k, v))
@@ -115,22 +125,20 @@ def thread_update_temp(s):
     global lcd
     decimate = config['decimate']
 
-    v = None
+    s.avg = 0
     for i in range(decimate):
-        v = s.read()
-        if v is None:
-            # TODO - write empty reading
-            s.avg = s.min
-            v = 0
-            break
+        if not s.read(): break
         s.avg += s.curr
+    if s.avg is not None: s.avg = round(s.avg / config['decimate'], 3)
+    if debug: print("data: %s %s " % (s.id, s.avg))
 
-    if debug: print("data: %s %s " % (s.id, v))
-    if lcd is not None and config['lcd'] == k:
+    if lcd is not None and config['main'] == s.name:
         # TODO - negative numbers
-        la = [int(i) for i in list(str(round(v, 2)).replace('.', ''))]
-        for i in range(4 - len(la)): la.append(0)
-        lcd.Show(la)
+        if s.avg is None: lcd.Clear()
+        else:
+            la = [int(i) for i in list(str(round(s.avg, 2)).replace('.', ''))]
+            for i in range(4 - len(la)): la.append(0)
+            lcd.Show(la)
     return
 
 def sync(toTemp = False):
@@ -154,20 +162,23 @@ def thread_temp():
         rthreads = []
         lock.acquire()
         for s in sensors:
-            if s.isSwitch():
-                s.read()
-                print("state: " + str(s.curr))
-            elif s.isTemp():
-                s.avg = 0
+            if s.isTemp():
                 if not s.enabled:
+                    s.avg = None
                     s.curr = None
                     continue
                 th = threading.Thread(daemon=True, target=thread_update_temp, args=(s,))
                 th.start()
                 rthreads.append(th)
-        lock.release()
-
         for th in rthreads: th.join()
+
+        for s in sensors:
+            if s.isSwitch():
+                s.pid() # TODO - force
+                s.read()
+                print("state: " + str(s.curr))
+
+        lock.release()
 
         # write file
         if config['running'] == False:
@@ -244,21 +255,22 @@ def thread_temp():
                 ssens.sort(key=lambda s: s.used)
                 for s in ssens:
                     if not s.used: continue
+                    csv.write(',')
+
                     if not s.enabled:
                         v = None
-                        csv.write(',')
-                        continue
-
-                    if s.isSwitch():
+                    elif s.isSwitch():
                         if s.curr:
                             v = 1
-                            csv.write(',true')
+                            csv.write('true')
                         else:
                             v = 0
-                            csv.write(',false')
+                            csv.write('false')
                     elif s.isTemp():
-                        v = round(s.avg / config['decimate'], 3)
-                        csv.write(',' + str(v))
+                        v = s.avg
+                        if s.avg is not None: csv.write(str(v))
+                    # TODO - none
+                    #if v is None:
                     newdata.append(v)
 
                 if comment != None:
@@ -288,10 +300,9 @@ def thread_temp():
                 lock.acquire()
                 for s in sensors:
                     ch |= s.changed()
-                    if ch: break;
                 lock.release()
+                if not ch: threading.Event().wait(timeout=1)
             print("changed")
-            threading.Event().wait(timeout=1)
         else:
             event.wait(timeout=config['update'])
             event.clear()
@@ -399,7 +410,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             print('post: ' + postVars)
 
         if self.path == '/comment': self.handleComment(postVars)
-        elif self.path == '/lcd': self.handleLCD(postVars)
+        elif self.path == '/main': self.handleMain(postVars)
         elif self.path == '/remove': self.handleRemove(postVars)
         elif self.path == '/toggle': self.handleToggle(postVars)
         else: self.handleConfig(postVars)
@@ -436,19 +447,18 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         return
 
-    def handleLCD(self, postVars):
+    def handleMain(self, postVars):
         global lcd, config
+
+        post = json.loads(postVars)
+        config['main'] = post['sensor']
+        print('Main sensor: ' + config['main'])
+        update_config()
+        event.set()
 
         if lcd == None:
             self.send_error(500, 'Not present!')
             return
-
-        post = json.loads(postVars)
-        config['lcd'] = post['sensor']
-        print('LCD sensor: ' + config['lcd'])
-
-        update_config()
-        event.set()
 
         if not lcd.connected():
             self.send_error(500,'Not connected!')
@@ -527,10 +537,14 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                     if s.isTemp():
                         if s.min != v[2]: s.min = int(v[2])
                         if s.max != v[3]: s.max = int(v[3])
+                    elif s.isSwitch():
+                        # override state if s.state != v[2]: s.state = int(v[2])
+                        s.setpoint = int(v[3])
+                        s.mode = int(v[4])
                     break;
             lock.release()
 
-        if 'lcd' in nc: config['lcd'] = nc['lcd']
+        #if 'main' in nc: config['main'] = nc['main']
         if 'active' in nc and config['active'] != nc['active']:
                 print('new data file: ' + nc['active'])
 
@@ -625,9 +639,6 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             d += '<a href="' + f + '">' + f + '</a><br>'
         self.wfile.write(bytearray(d, 'utf-8'))
 
-class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    pass
-
 threading.Thread(daemon=True, target=thread_temp).start()
 if shutdown_pin != None: threading.Thread(daemon=True, target=thread_shutdown).start()
 threading.Thread(daemon=True, target=thread_discovery).start()
@@ -636,8 +647,10 @@ def signal_term_handler(signal, frame):
     print('got SIGTERM')
     sync()
     sys.exit(0)
-
 signal.signal(signal.SIGTERM, signal_term_handler)
+
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    pass
 
 try:
     server = ThreadingHTTPServer(('', PORT_NUMBER), BrewHTTPHandler)

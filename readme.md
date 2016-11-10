@@ -1,5 +1,5 @@
 # brewarm
-Efficient temperature logging and displaying using w1 sensors with planned PID temperature control, also supports cheap i2c 4digit led display on RPi.
+Efficient temperature logging using w1 sensors with PID temperature control, also supports cheap i2c 4digit led display on RPi.
 Inspired by BrewPi but because of it's hardware complexity and slow log rendering with many datapoints I created something simpler to use with your raspberry or any other platform supporting w1 sensors on Linux with requirements to hardware as little as possible - you need just to hook up your sensors, that's it!
 "arm" in the name denotes that I am running it not only on RPi but also on other ARM platforms.
 
@@ -10,6 +10,7 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * graphing multiple sensors on web ui using built in web server
 * logging can be paused but only for last session
 * commenting on data points
+* switch PID control from one master sensor
 * manual switch state control
 * live graph updating using little network traffic
 * logging is done to /tmp and synchronizing to permanent storage is done only at defined intervals or shutdown to lessen storage wearing
@@ -21,7 +22,6 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * R-PI only - sensor data displaying on cheap 4digit lcd with TM1637 driver IC (RPi.GPIO library dependency)
 
 ## WIP prioritized
-* PID control for set temperature
 * sensor offset setting
 * multiple switch state graphing
 * fermentation profile
@@ -42,11 +42,11 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
     * name - friendly name of sensor which also binds it's id to log file entry
     * remove button - delete sensor, present sensor will be readded by automatic discovery
 * switch configuration columns:
-    * unused - planned for PID override
+    * UNUSED - planned for PID override
     * enabled check box - same as for temp sensor
     * id
     * state - current state also works as instant action button (red - off, green - on)
-    * unused - planned for PID set point
-    * unused - planned for PID control direction
+    * PID set point
+    * PID control direction
     * name
     * remove button
