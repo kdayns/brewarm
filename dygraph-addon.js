@@ -2,9 +2,6 @@ binaryFillPlotter = function(e) {
   // Skip if we're drawing a single series for interactive highlight overlay.
   if (e.singleSeriesName) return;
 
-  // We'll handle all the series at once, not one-by-one.
-  if (e.seriesIndex !== 0) return;
-
   var g = e.dygraph;
   var setNames = g.getLabels().slice(1);  // remove x-axis
 
@@ -72,7 +69,7 @@ binaryFillPlotter = function(e) {
       if (!Dygraph.isOK(point.y) || !point.yval) {
         if (isNaN(prevX)) continue;
 
-        ctx.rect(firstX, 0, prevX - firstX, axisY);
+        ctx.rect(firstX, 0, prevX - firstX, area.h);
         prevX = NaN;
         continue;
       }
@@ -84,7 +81,7 @@ binaryFillPlotter = function(e) {
     }
 
     if (isNaN(prevX)) {
-      ctx.rect(firstX, 0, prevX - firstX, axisY);
+      ctx.rect(firstX, 0, prevX - firstX, area.h);
     }
 
     ctx.fill();
@@ -168,18 +165,18 @@ Dygraph.prototype.parseCSV_ = function(data) {
   }
 
   if (ret.length) {
+      var series = {}
       for (var j = 1; j < ret[0].length; j++) {
           if (!binarySeries[j]) continue;
 
           var n = this.attrs_.labels[j];
-          var series = {}
           series[n] = {
                 fillGraph: true,
                 highlightCircleSize: 0,
                 plotter: binaryFillPlotter,
           };
-          this.updateOptions( { series } );
       }
+      this.updateOptions( { series }, true );
   }
 
   if (outOfOrder) {
