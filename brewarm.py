@@ -19,7 +19,7 @@ import email.utils as eut
 import w1dev
 from w1dev import w1d
 
-testmode        = 0
+testmode        = path.isfile('.test_mode')
 shutdown_pin    = None # gpio pin number 7
 datadir         = 'data'
 PORT_NUMBER     = 80
