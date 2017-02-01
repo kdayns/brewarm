@@ -13,6 +13,8 @@
 <div id="brewnamediv" style="float:left;"><select id="brewname" onchange="brewChanged(this.value)"></select></div>
 <button id="start" style="float:left;" disabled=1 onclick="start()">start</button>
 <button id="stop" style="float:left;" disabled=1 onclick="stop()">stop</button>
+<label for="show_graph" style="float:right">graph</label>
+<input type='checkbox' id="show_graph" checked=1 style="float:right" onclick="toggleGraph(this)"/>
 <label for="show_config" style="float:right">config</label>
 <input type='checkbox' id="show_config" checked=1 style="float:right" onclick="toggleConfig(this)"/>
 <a href='/data/' style="float:right">data</a>

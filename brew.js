@@ -167,6 +167,7 @@ function recvStatus(data) {
 }
 
 function toggleConfig(el) { $('#config').toggle(el.checked); }
+function toggleGraph(el) { $('#graph').toggle(el.checked); }
 function visibilityChange(el) { g.setVisibility(el.id, el.checked); }
 function tryShowLastDays() { if (!showLastDays()) setTimeout(tryShowLastDays, 10); }
 function updateRunning() {
