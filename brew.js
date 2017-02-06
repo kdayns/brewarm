@@ -153,8 +153,9 @@ function recvStatus(data) {
 
     var tail = s['tail'];
     if (tail && rawdata.length && running && selectedBrew == activeBrew) {
+        var last = rawdata[rawdata.length - 1][0];
         for (var ti = 0; ti < tail.length; ++ti) {
-            if (tail[ti][0] <= rawdata[rawdata.length - 1][0]) continue;
+            if (tail[ti][0] <= last) continue;
 
             rawdata.push(tail[ti]);
             g.rawData_ = rawdata;

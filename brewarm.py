@@ -57,7 +57,7 @@ def getMainTemp():
     global config, sensors, lock
     t = None
     for s in sensors:
-        if s.isTemp() and s.name == config['main']:
+        if s.isTemp() and 'main' in config and s.name == config['main']:
             t = s.avg
             break
     return t
@@ -425,10 +425,11 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(500,'Not running')
             return
 
+        post = json.loads(postVars)
         lock.acquire()
         active = False
         for s in sensors:
-            if s.id == post['sensor']:
+            if s.name == post['sensor']:
                 active = s.used
                 break
         lock.release()
@@ -437,7 +438,6 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(500,'Sensor not used in current brew!')
             return
 
-        post = json.loads(postVars)
         comment = {}
         comment['sensor'] = post['sensor']
         comment['string'] = post['comment']
@@ -572,6 +572,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
 
         if 'running' in nc: config['running'] = nc['running']
         if 'update' in nc: config['update'] = int(nc['update'])
+        if 'sync' in nc: config['sync'] = int(nc['sync'])
         if 'debug' in nc: config['debug'] = nc['debug']
         if 'decimate' in nc: config['decimate'] = nc['decimate']
         if 'date' in nc:
