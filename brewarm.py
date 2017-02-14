@@ -274,12 +274,9 @@ def thread_temp():
                     newdata.append(v)
 
                 if comment != None:
-                    i = 0
                     for s in sensors:
-                        if s.name != comment['sensor']:
-                            i = i + 1
-                            continue
-                        csv.write(' #' + str(i) + ' ' + comment['string'])
+                        if s.name != comment['sensor']: continue
+                        csv.write(' #' + str(s.used - 1) + ' ' + comment['string'])
                         break
                     comment = None
                 lock.release()
@@ -430,7 +427,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         active = False
         for s in sensors:
             if s.name == post['sensor']:
-                active = s.used
+                active = s.enabled
                 break
         lock.release()
 
