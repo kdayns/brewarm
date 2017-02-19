@@ -83,17 +83,18 @@ function recvStatus(data) {
     }
     updateRunning();
     var sensors = s["sensors"];
+    var table = document.getElementById("sensor_list");
     for (var i in sensors) {
         var sensor = sensors[i];
         var si = sensor.id;
         var found = false;
-        $("#sensor_list td.id").each(function(i, tr) {
-             if ($(tr).html() != si) return;
+        $("#sensor_list td.id").each(function(i, td_id) {
+             if ($(td_id).html() != si) return;
 
              found = true;
              v = sensor['curr'];
              if (sensor.dev == "ds18b20") {
-                 $("#sensor_list td.value").eq(i).html('<b>' + v + '</b>');
+                table.rows[i].cells[3].innerHTML = '<b>' + v + '</b>';
              } else if (sensor.dev == "ds2413") {
                  $("#toggle_state" + si).prop('checked', v);
              }
