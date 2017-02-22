@@ -5,7 +5,8 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 
 ## features
 * uses csv format
-* reading temperature from linux sysfs filesystem
+* reading temperature from linux sysfs using kernel driver
+* software fallback using w1 device rw file in sysfs
 * oversampling to increase accuracy
 * graphing multiple sensors on web ui using built in web server
 * logging can be paused but only for last session
@@ -22,6 +23,7 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * R-PI only - sensor data displaying on cheap 4digit lcd with TM1637 driver IC (RPi.GPIO library dependency)
 
 ## WIP prioritized
+* test PID control
 * sensor offset setting
 * multiple switch state graphing
 * fermentation profile

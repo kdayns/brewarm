@@ -47,8 +47,12 @@ lastSync = datetime.datetime.now()
 
 if not testmode:
     subprocess.call(['modprobe', 'w1-gpio', 'gpiopin=10'])
-    subprocess.call(['modprobe', 'w1_therm'])
-    subprocess.call(['modprobe', 'w1_ds2413'])
+    if subprocess.call(['modprobe', 'w1_therm']):
+        w1dev.sw_ds18b20 = True
+        print('using sw ds18b20')
+    if subprocess.call(['modprobe', 'w1_ds2413']):
+        w1dev.sw_ds2413 = True
+        print('using sw ds2413')
     os.chdir('/root/brewarm')
 else:
     w1dev.w1path = '.' + w1dev.w1path
@@ -126,11 +130,20 @@ def thread_update_temp(s):
     decimate = config['decimate']
 
     s.avg = 0
+    cnt = 0
+    retried = False
     for i in range(decimate):
-        if not s.read(): break
+        if not s.read():
+            if retried: break
+            retried = True
+            continue
         s.avg += s.curr
-    if s.avg is not None: s.avg = round(s.avg / config['decimate'], 3)
-    if debug: print("data: %s %s " % (s.id, s.avg))
+        cnt += 1
+    if not cnt: s.avg = None
+    else:
+        s.avg = round(s.avg / cnt, 3)
+        if s.curr is None: s.avg
+    if debug: print("data: %s %s %d" % (s.id, s.avg, cnt))
 
     if lcd is not None and config['main'] == s.name:
         # TODO - negative numbers
@@ -161,22 +174,31 @@ def thread_temp():
     while True:
         rthreads = []
         lock.acquire()
+
+        now = datetime.datetime.now()
+        t = not w1dev.sw_ds18b20
+        # threaded reading works faster
         for s in sensors:
             if s.isTemp():
                 if not s.enabled:
                     s.avg = None
                     s.curr = None
                     continue
-                th = threading.Thread(daemon=True, target=thread_update_temp, args=(s,))
-                th.start()
-                rthreads.append(th)
-        for th in rthreads: th.join()
+                if not t: thread_update_temp(s)
+                else:
+                    th = threading.Thread(daemon=True, target=thread_update_temp, args=(s,))
+                    th.start()
+                    rthreads.append(th)
+        if t:
+            for th in rthreads: th.join()
 
         for s in sensors:
             if s.isSwitch():
                 s.pid() # TODO - force
                 s.read()
                 print("state: " + str(s.curr))
+
+        print('-- reading sensors took: ' + str(datetime.datetime.now() - now))
 
         lock.release()
 
