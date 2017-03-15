@@ -1,0 +1,22 @@
+# /etc/systemd/system/brewarm.service
+
+[Unit]
+Description=Brewarm script
+After=syslog.target
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/brewarm/
+#Type=simple
+#ExecStart=/opt/brewarm/brewarm.py
+Type=forking
+ExecStart=/usr/bin/tmux new-session -d /opt/brewarm/brewarm.py
+
+# Give a reasonable amount of time for the server to start up/shut down
+TimeoutSec=300
+
+[Install]
+WantedBy=multi-user.target
+
