@@ -39,16 +39,17 @@ class w1d(Pid):
                 self.min = -20
                 self.max = 100
                 self.dev = 'ds18b20'
-            elif path.isfile(w1path + self.id + '/output'):
+            # TODO - detection in sw mode
+            else: #elif path.isfile(w1path + self.id + '/output'):
                 self.curr = 0
                 self.dev = 'ds2413'
                 self.set(0)
                 self.mode = MODE_COOL
                 self.tune(5, 0.25, -1.5)
                 self.range(-100, 100)
-            else:
-                self.dev = ''
-                print('unknown device: ' + self.id)
+            #else:
+            #    self.dev = ''
+            #    print('unknown device: ' + self.id)
         else:
             if not 'dev' in _dictstr: _dictstr['dev'] = 'ds18b20'
             self.dev = _dictstr['dev']
@@ -188,10 +189,10 @@ class w1d(Pid):
 
         return True;
 
-    def pid(self):
+    def pid(self, dt):
         if not self.isSwitch(): return False
 
-        self.step(1.0, pidTemp())
+        self.step(dt, pidTemp())
         self.write(self.get() > 0)
 
         print('PID out=' + str(self.get()) + "  t=" + str(pidTemp()))

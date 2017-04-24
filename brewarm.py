@@ -194,7 +194,8 @@ def thread_temp():
 
         for s in sensors:
             if s.isSwitch():
-                s.pid() # TODO - force
+                # TODO - force
+                s.pid(config['update'])
                 s.read()
                 print("state: " + str(s.curr))
 

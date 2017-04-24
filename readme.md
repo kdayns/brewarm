@@ -23,10 +23,12 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * R-PI only - sensor data displaying on cheap 4digit lcd with TM1637 driver IC (RPi.GPIO library dependency)
 
 ## WIP prioritized
-* test PID control
+* switch override
+* pid reset
 * sensor offset setting
-* multiple switch state graphing
 * fermentation profile
+* multiple switch state graphing
+* w1 type detect in sw mode
 
 ## more info
 * switch state may appear incorrect when rolling average is used, which is 10 by default
