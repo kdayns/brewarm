@@ -58,15 +58,18 @@ binaryFillPlotter = function(e) {
     // If the point density is high enough, dropping segments on their way to
     // the canvas justifies the overhead of doing so.
     if (points.length > 2 * g.width_) {
-      ctx = DygraphCanvasRenderer._fastCanvasProxy(ctx);
+      // TODO - no rect compression
+      //ctx = DygraphCanvasRenderer._fastCanvasProxy(ctx);
     }
 
-    var point;
     var prevX = NaN;
     var firstX = NaN;
+    var val = NaN;
     while (iter.hasNext) {
-      point = iter.next();
-      if (!Dygraph.isOK(point.y) || !point.yval) {
+      var point = iter.next();
+      val = Dygraph.isOK(point.y) && point.yval;
+
+      if (!val) {
         if (isNaN(prevX)) continue;
 
         ctx.rect(firstX, 0, prevX - firstX, area.h);
@@ -80,7 +83,7 @@ binaryFillPlotter = function(e) {
       prevX = point.canvasx;
     }
 
-    if (isNaN(prevX)) {
+    if (val) {
       ctx.rect(firstX, 0, prevX - firstX, area.h);
     }
 
