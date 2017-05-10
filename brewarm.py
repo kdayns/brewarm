@@ -61,7 +61,7 @@ def getMainTemp():
     global config, sensors, lock
     t = None
     for s in sensors:
-        if s.isTemp() and 'main' in config and s.name == config['main']:
+        if s.isTemp() and 'main' in config and s.id == config['main']:
             t = s.avg
             break
     return t
@@ -145,7 +145,7 @@ def thread_update_temp(s):
         if s.curr is None: s.avg
     if debug: print("data: %s %s %d" % (s.id, s.avg, cnt))
 
-    if lcd is not None and config['main'] == s.name:
+    if lcd is not None and config['main'] == s.id:
         # TODO - negative numbers
         if s.avg is None: lcd.Clear()
         else:
