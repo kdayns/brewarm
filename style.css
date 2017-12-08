@@ -23,6 +23,6 @@ div#sensor_list {
     padding: 10px;
 }
 .toggle { display:none; }
-.toggle ~ label { color:red; }
-.toggle:checked ~ label { color:green; }
+.toggle ~ label { color:black; }
+.toggle:checked ~ label { color:red; }
 .toggle:disabled ~ label { color:grey; }
