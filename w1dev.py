@@ -49,6 +49,7 @@ class w1d(Pid):
                 self.tune(35, 0.20, 0)
                 self.range(0, 50)
                 self.output = None
+                self.forced = False
             #else:
             #    self.dev = ''
             #    print('unknown device: ' + self.id)
@@ -70,6 +71,7 @@ class w1d(Pid):
                 self.range(_dictstr['minout'], _dictstr['maxout'])
                 self.reset()
                 self.output = None
+                self.forced = False
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
@@ -171,10 +173,18 @@ class w1d(Pid):
         print ('Switch %s state %x (raw %x)' % (self.id, self.curr, val))
         return True
 
-    def write(self, value):
+    def force(self, force):
+        print ('Switch %s force %x' % (self.id, force))
+        self.forced = force;
+
+    def write(self, value, force):
         if not self.isSwitch(): return False
 
         print ('Switch %s write state %x' % (self.id, value))
+        if self.forced and not force:
+            print ('force in effect, ignoring')
+            return False
+
         value = ~ (IOB if value else 0) & 255
 
         try:
@@ -202,7 +212,7 @@ class w1d(Pid):
             return False
 
         if dt: self.step(dt / 60, t)
-        self.write(self.get() > 0)
+        self.write(self.get() > 0, False)
 
         print('PID out=%f t=%f I=%f' % (self.get(), t, self._integral))
 

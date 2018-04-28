@@ -23,7 +23,6 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * R-PI only - sensor data displaying on cheap 4digit lcd with TM1637 driver IC (RPi.GPIO library dependency)
 
 ## WIP prioritized
-* switch override
 * pid reset
 * sensor offset setting
 * fermentation profile
@@ -47,10 +46,10 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
     * name - friendly name of sensor which also binds it's id to log file entry
     * remove button - delete sensor, present sensor will be readded by automatic discovery
 * switch configuration columns:
-    * UNUSED - planned for PID override
+    * toggle forced override - permanent PID override (will screw runtime coefficents)
     * enabled check box - same as for temp sensor
     * id
-    * state - current state also works as instant action button (red - off, green - on)
+    * state - current state also works as instant action button for override (red - off, green - on)
     * PID set point
     * PID control direction
     * name

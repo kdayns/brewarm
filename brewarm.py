@@ -538,7 +538,8 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         lock.acquire()
         for s in sensors:
             if s.id == post['sensor']:
-                s.write(post['value'])
+                s.force(post['force'])
+                s.write(post['value'], post['force'])
                 s.read()
                 break;
         lock.release()

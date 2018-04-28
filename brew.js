@@ -120,23 +120,22 @@ function recvStatus(data) {
                 '<td class=toggle_force>'
                     + '<input type=checkbox class=toggle id=toggle_force' + si + ' '
                     + (sensor['force'] ? 'checked=1' : '')
-                    + ' disabled=1 >'
-                    + '<label for=toggle_force' + si + '>force</label></td>'
+                    + ' onclick="return toggleForce(\'' + si + '\', this.checked)" >'
+                    + '<label for=toggle_force' + si + '>[force]</label></td>'
                 + '<td class=enabled><input type=checkbox class=enabled '
                     + (sensor['enabled'] ? 'checked=1' : '') + '/></td>'
                 + '<td class=id>' + si + '</td>'
                 + '<td class=toggle_state>'
                     + '<input type=checkbox class=toggle id=toggle_state' + si + ' '
                     + (sensor['curr'] ? 'checked=1' : '')
-                    + ' onclick="toggleSensor(\'' + si + '\', this.checked)"'
-                    + ' disabled=1 >'
-                    + '<label for=toggle_state' + si + '>on</label></td>'
+                    + ' onclick="return toggleSwitch(\'' + si + '\', this.checked)" >'
+                    + '<label for=toggle_state' + si + '>[on]</label></td>'
                 + '<td><input class=setpoint style="width:40px" type=text value="'
                     + sensor['setpoint'] + '" ></td>'
                 + '<td class=toggle_mode>'
                     + '<input type=checkbox class=toggle id=toggle_mode' + si + ' '
                     + (sensor['mode'] ? 'checked=1' : '') + '>'
-                    + '<label for=toggle_mode' + si + '>heat</label></td>'
+                    + '<label for=toggle_mode' + si + '>[heat]</label></td>'
                 + '<td><input class=name type=text value="' + sensor['name'] + '"></td>'
                 + '<td><button onclick="removeSensor(\'' + si
                     + '\', this.parentNode.parentNode.rowIndex)">x</button></td>'
@@ -257,10 +256,25 @@ function removeSensor(sensorId, rowIdx) {
         'sensor': sensorId,
      }));
 }
-function toggleSensor(sensorId, value) {
+function toggleForce(sensorId, force) {
+    var value = $("#toggle_state" + sensorId).prop('checked');
     $.post('toggle', JSON.stringify({
         'sensor': sensorId,
         'value': value,
+        'force': force,
+     }));
+}
+function toggleSwitch(sensorId, value) {
+    var force = $("#toggle_force" + sensorId).prop('checked');
+    if (!force) {
+        alert('force disabled');
+        return false;
+    }
+
+    $.post('toggle', JSON.stringify({
+        'sensor': sensorId,
+        'value': value,
+        'force': force,
      }));
 }
 function saveConfig() {
