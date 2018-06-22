@@ -43,10 +43,12 @@ class w1d(Pid):
             else: #elif path.isfile(w1path + self.id + '/output'):
                 self.curr = 0
                 self.dev = 'ds2413'
+                #self.reset()
                 self.set(0)
                 self.mode = MODE_COOL
                 self.tune(5, 0.25, -1.5)
                 self.range(-100, 100)
+                self.output = self.minout
             #else:
             #    self.dev = ''
             #    print('unknown device: ' + self.id)
@@ -62,9 +64,11 @@ class w1d(Pid):
                 self.min = _dictstr['min']
                 self.max = _dictstr['max']
             elif self.isSwitch():
+                #self.reset()
                 self.set(_dictstr['setpoint'])
                 self.tune(_dictstr['Kp'], _dictstr['Ki'], _dictstr['Kd'])
                 self.range(-100, 100)
+                self.output = self.minout
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
@@ -192,9 +196,14 @@ class w1d(Pid):
     def pid(self, dt):
         if not self.isSwitch(): return False
 
-        self.step(dt, pidTemp())
+        t = pidTemp()
+        if t is None:
+            print('PID out=%d t=none I=%f' % (self.get(), self._integral))
+            return False
+
+        self.step(dt, t)
         self.write(self.get() > 0)
 
-        print('PID out=' + str(self.get()) + "  t=" + str(pidTemp()))
+        print('PID out=%d t=%f I=%f' % (self.get(), t, self._integral))
 
         return True

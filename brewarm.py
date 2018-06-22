@@ -53,7 +53,7 @@ if not testmode:
     if subprocess.call(['modprobe', 'w1_ds2413']):
         w1dev.sw_ds2413 = True
         print('using sw ds2413')
-    os.chdir('/root/brewarm')
+    os.chdir('/opt/brewarm')
 else:
     w1dev.w1path = '.' + w1dev.w1path
 
@@ -611,6 +611,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         mime = {
             '.csv': 'text/html',
             '.html': 'text/html',
+            '.map':  'application/json',
             '.jpg': 'image/jpg',
             '.gif': 'image/gif',
             '.js': 'application/javascript',
