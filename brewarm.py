@@ -167,15 +167,11 @@ def sync(toTemp = False):
         else:
             print("temp not present")
 
-def thread_temp():
-    global config, sensors, csv, event, latest, lastSync, comment
-    lastActive = ''
-
-    while True:
+def read_all(now, lastRead):
+        global sensors
         rthreads = []
         lock.acquire()
 
-        now = datetime.datetime.now()
         t = not w1dev.sw_ds18b20
         # threaded reading works faster
         for s in sensors:
@@ -195,13 +191,22 @@ def thread_temp():
         for s in sensors:
             if s.isSwitch():
                 # TODO - force
-                s.pid(config['update'])
+                s.pid((now - lastRead).total_seconds())
                 s.read()
                 print("state: " + str(s.curr))
 
-        print('-- reading sensors took: ' + str(datetime.datetime.now() - now))
-
         lock.release()
+
+def thread_temp():
+    global config, sensors, csv, event, latest, lastSync, comment
+    lastActive = ''
+    lastRead = datetime.datetime.now()
+
+    while True:
+        now = datetime.datetime.now()
+        read_all(now, lastRead)
+        lastRead = now
+        print('-- reading sensors took: ' + str(datetime.datetime.now() - now))
 
         # write file
         if config['running'] == False:
@@ -254,7 +259,7 @@ def thread_temp():
                         tail = tail[:tail.find(',')]
                         last = datetime.datetime.strptime(tail, '%Y/%m/%d %H:%M:%S')
                         if debug: print('last: ' + str(last))
-                        if last > datetime.datetime.now():
+                        if last > now:
                             print('time adjust')
                             subprocess.call(['date', '-s', tail])
                     csv.seek(0, io.SEEK_END)
@@ -269,7 +274,6 @@ def thread_temp():
             # csv writer
             if csv != None:
                 newdata = []
-                now = datetime.datetime.now()
                 newdata.append(int(now.timestamp() * 1000))
                 csv.write(now.strftime('%Y/%m/%d %H:%M:%S'))
 
