@@ -57,17 +57,20 @@ if not testmode:
 else:
     w1dev.w1path = '.' + w1dev.w1path
 
-def getMainTemp():
-    global config, sensors, lock
-    t = None
+def getMain():
+    global config, sensors
     for s in sensors:
         if s.isTemp() and 'main' in config and s.id == config['main']:
-            t = s.avg
-            break
-    return t
+            return s
+    return None
+
+def getMainTemp():
+    t = getMain()
+    return t.avg if t != None else None
+
 w1dev.pidTemp = lambda : getMainTemp()
 
-def update_config():
+def store_config():
     global debug, config, sensors
 
     debug = config['debug']
@@ -109,7 +112,7 @@ if path.isfile('config'):
 
 if path.isfile('.clean_shutdown'):
     config['running'] = False
-    update_config()
+    store_config()
     os.remove('.clean_shutdown')
 
 config['brewfiles'] = []
@@ -381,7 +384,7 @@ def thread_discovery():
             lock.release()
 
         if found:
-            update_config()
+            store_config()
             event.set()
 
         threading.Event().wait(timeout=5)
@@ -472,12 +475,22 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         return
 
     def handleMain(self, postVars):
-        global lcd, config
+        global lcd, config, sensors
 
         post = json.loads(postVars)
         config['main'] = post['sensor']
         print('Main sensor: ' + config['main'])
-        update_config()
+
+        m = getMain()
+        if m is not None:
+            if debug: print('updating range %d - %d' % (m.min, m.max))
+            lock.acquire()
+            for s in sensors:
+                if s.isSwitch():
+                    s.range(m.min, m.max);
+            lock.release()
+
+        store_config()
         event.set()
 
         if lcd == None:
@@ -504,7 +517,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                 break;
         lock.release()
 
-        update_config()
+        store_config()
 
         self.send_response(200)
         self.end_headers()
@@ -566,6 +579,13 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                         s.setpoint = int(v[3])
                         s.mode = int(v[4])
                     break;
+
+            m = getMain()
+            if m is not None:
+                if debug: print('updating range %d - %d' % (m.min, m.max))
+                for s in sensors:
+                    if s.isSwitch():
+                        s.range(m.min, m.max);
             lock.release()
 
         #if 'main' in nc: config['main'] = nc['main']
@@ -607,7 +627,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                 self.send_error(500, 'Bad date format!')
                 print('bad date passed: ' + nc['date'])
                 return
-        update_config()
+        store_config()
         event.set()
         self.sendStatus()
 
