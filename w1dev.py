@@ -36,8 +36,8 @@ class w1d(Pid):
             if path.isfile(w1path + self.id + '/w1_slave'):
                 self.curr = 0
                 self.avg = 0
-                self.min = -20
-                self.max = 100
+                self.min = 0
+                self.max = 50
                 self.dev = 'ds18b20'
             # TODO - detection in sw mode
             else: #elif path.isfile(w1path + self.id + '/output'):
@@ -46,8 +46,8 @@ class w1d(Pid):
                 #self.reset()
                 self.set(0)
                 self.mode = MODE_COOL
-                self.tune(5, 0.25, -1.5)
-                self.range(-100, 100)
+                self.tune(35, 0.20, 0)
+                self.range(0, 50)
                 self.output = self.minout
             #else:
             #    self.dev = ''
@@ -201,7 +201,7 @@ class w1d(Pid):
             print('PID out=%d t=none I=%f' % (self.get(), self._integral))
             return False
 
-        self.step(dt, t)
+        self.step(dt / 60, t)
         self.write(self.get() > 0)
 
         print('PID out=%d t=%f I=%f' % (self.get(), t, self._integral))
