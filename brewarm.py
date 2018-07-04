@@ -194,7 +194,8 @@ def read_all(now, lastRead):
         for s in sensors:
             if s.isSwitch():
                 # TODO - force
-                s.pid((now - lastRead).total_seconds())
+                if lastRead is not None: s.pid((now - lastRead).total_seconds())
+                else: s.pid(0)
                 s.read()
                 print("state: " + str(s.curr))
 
@@ -203,7 +204,7 @@ def read_all(now, lastRead):
 def thread_temp():
     global config, sensors, csv, event, latest, lastSync, comment
     lastActive = ''
-    lastRead = datetime.datetime.now()
+    lastRead = None
 
     while True:
         now = datetime.datetime.now()

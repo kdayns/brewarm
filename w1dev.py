@@ -67,8 +67,9 @@ class w1d(Pid):
                 #self.reset()
                 self.set(_dictstr['setpoint'])
                 self.tune(_dictstr['Kp'], _dictstr['Ki'], _dictstr['Kd'])
-                self.range(-100, 100)
-                self.output = self.minout
+                self.range(_dictstr['minout'], _dictstr['maxout'])
+                self.reset()
+                self.output = 0
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
@@ -201,9 +202,9 @@ class w1d(Pid):
             print('PID out=%d t=none I=%f' % (self.get(), self._integral))
             return False
 
-        self.step(dt / 60, t)
+        if dt: self.step(dt / 60, t)
         self.write(self.get() > 0)
 
-        print('PID out=%d t=%f I=%f' % (self.get(), t, self._integral))
+        print('PID out=%f t=%f I=%f' % (self.get(), t, self._integral))
 
         return True

@@ -146,7 +146,6 @@ class Pid (object):
             (above, below) = (below, above)
         self.minout = below
         self.maxout = above
-        self.reset()
 
     def tune(self, P, I, D):
         '''Sets the three constant tuning parameters, P, I, and D.'''
