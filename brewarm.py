@@ -297,6 +297,12 @@ def thread_temp():
                         else:
                             v = 0
                             csv.write('false')
+                        # pid out
+                        csv.write(',')
+                        pv = s.get()
+                        if pv is not None:
+                            csv.write(str(round(pv, 3)))
+                        newdata.append(pv)
                     elif s.isTemp():
                         v = s.avg
                         if s.avg is not None: csv.write(str(v))
@@ -577,7 +583,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                         if s.max != v[3]: s.max = int(v[3])
                     elif s.isSwitch():
                         # override state if s.state != v[2]: s.state = int(v[2])
-                        s.setpoint = int(v[3])
+                        s.setpoint = float(v[3])
                         s.mode = int(v[4])
                     break;
 
@@ -606,6 +612,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                         s.used = idx
                         idx += 1
                         csv.write(',' + s.name)
+                        if s.isSwitch(): csv.write(',' + s.name + '_pid')
                     else: s.used = 0
                 lock.release()
 

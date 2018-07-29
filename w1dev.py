@@ -48,7 +48,7 @@ class w1d(Pid):
                 self.mode = MODE_COOL
                 self.tune(35, 0.20, 0)
                 self.range(0, 50)
-                self.output = self.minout
+                self.output = None
             #else:
             #    self.dev = ''
             #    print('unknown device: ' + self.id)
@@ -69,7 +69,7 @@ class w1d(Pid):
                 self.tune(_dictstr['Kp'], _dictstr['Ki'], _dictstr['Kd'])
                 self.range(_dictstr['minout'], _dictstr['maxout'])
                 self.reset()
-                self.output = 0
+                self.output = None
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
@@ -198,8 +198,7 @@ class w1d(Pid):
         if not self.isSwitch(): return False
 
         t = pidTemp()
-        if t is None:
-            print('PID out=%d t=none I=%f' % (self.get(), self._integral))
+        if t is None or dt == 0:
             return False
 
         if dt: self.step(dt / 60, t)
