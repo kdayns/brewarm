@@ -110,6 +110,7 @@ class Pid (object):
     def reset(self):
         self._integral = 0.0
         self._previous = 0.0
+        self.output = self.setpoint
 
     def step(self, dt=1.0, input=None):
         '''Update the controller with a new input, to get new output.
@@ -124,12 +125,12 @@ class Pid (object):
         else:
             self.input = input
         err = self.setpoint - self.input
+        err *= -1
         self._integral += err * dt
         I = self._integral
         D = (err - self._previous) / dt
-        output = self.Kp*err + self.Ki*I + self.Kd*D
+        self.output = self.Kp*err + self.Ki*I + self.Kd*D
         self._previous = err
-        self.output = self.bound(output)
 
     def bound(self, output):
         '''Ensure the output falls within the current output range.
@@ -160,7 +161,7 @@ class Pid (object):
 
     def get(self):
         '''Returns the current output value at any time.'''
-        return self.output
+        return self.bound(self.setpoint + self.output)
 
     def measure(self):
         '''May be overridden to calculate a new input value.'''

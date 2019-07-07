@@ -43,8 +43,8 @@ class w1d(Pid):
             else: #elif path.isfile(w1path + self.id + '/output'):
                 self.curr = 0
                 self.dev = 'ds2413'
-                #self.reset()
                 self.set(0)
+                self.reset()
                 self.mode = MODE_COOL
                 self.tune(35, 0.20, 0)
                 self.range(0, 50)
@@ -65,13 +65,13 @@ class w1d(Pid):
                 self.min = _dictstr['min']
                 self.max = _dictstr['max']
             elif self.isSwitch():
-                #self.reset()
                 self.set(_dictstr['setpoint'])
+                self.reset()
                 self.tune(_dictstr['Kp'], _dictstr['Ki'], _dictstr['Kd'])
                 self.range(_dictstr['minout'], _dictstr['maxout'])
-                self.reset()
-                self.output = None
+                self.output = _dictstr['setpoint']
                 self.forced = False
+                self.mode = _dictstr['mode']
 
     def dict(self):
         return { key:value for key, value in self.__dict__.items()
@@ -212,7 +212,8 @@ class w1d(Pid):
             return False
 
         if dt: self.step(dt / 60, t)
-        self.write(self.get() > 0, False)
+        heat = self.mode == MODE_HEAT
+        self.write(self.get() < self.setpoint if heat else self.get() > self.setpoint, False)
 
         print('PID out=%f t=%f I=%f' % (self.get(), t, self._integral))
 
