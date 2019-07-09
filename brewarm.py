@@ -128,6 +128,10 @@ if 0: # hw clock
     open('/sys/class/i2c-adapter/i2c-' + str(config['i2c_bus']) + '/new_device', 'w').write("ds1307 0x68")
     subprocess.call(['hwclock', '-s']) # load clock from rtc
 
+def isRunning():
+    global config
+    return config['running']
+
 def thread_update_temp(s):
     global lcd
     decimate = config['decimate']
@@ -191,13 +195,13 @@ def read_all(now, lastRead):
         if t:
             for th in rthreads: th.join()
 
-        for s in sensors:
-            if s.isSwitch():
-                # TODO - force
-                if lastRead is not None: s.pid((now - lastRead).total_seconds())
-                else: s.pid(0)
-                s.read()
-                print("state: " + str(s.curr))
+        if isRunning():
+            for s in sensors:
+                if s.isSwitch():
+                    if lastRead is not None: s.pid((now - lastRead).total_seconds())
+                    else: s.pid(0)
+                    s.read()
+                    print("state: " + str(s.curr))
 
         lock.release()
 
@@ -213,7 +217,7 @@ def thread_temp():
         print('-- reading sensors took: ' + str(datetime.datetime.now() - now))
 
         # write file
-        if config['running'] == False:
+        if not isRunning():
             latest = []
             lastActive = ''
             if csv != None:
@@ -455,7 +459,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(500,'Comment pending!')
             return
 
-        if config['running'] == False:
+        if not isRunning():
             self.send_error(500,'Not running')
             return
 
