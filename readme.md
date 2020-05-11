@@ -23,6 +23,9 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * R-PI only - sensor data displaying on cheap 4digit lcd with TM1637 driver IC (RPi.GPIO library dependency)
 
 ## WIP prioritized
+* web - load force from config
+* use buffers for log flushing
+* use http from upython
 * pid reset
 * sensor offset setting
 * fermentation profile

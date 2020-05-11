@@ -7,7 +7,6 @@ import time
 from os import curdir, sep, listdir, path
 
 w1path = '/sys/bus/w1/devices/'
-pidTemp = None
 sw_ds18b20 = False
 sw_ds2413 = False
 
@@ -204,10 +203,9 @@ class w1d(Pid):
 
         return True;
 
-    def pid(self, dt):
+    def pid(self, t, dt):
         if not self.isSwitch(): return False
 
-        t = pidTemp()
         if t is None or dt == 0:
             return False
 

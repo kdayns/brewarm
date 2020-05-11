@@ -12,7 +12,7 @@ WorkingDirectory=/opt/brewarm/
 #Type=simple
 #ExecStart=/opt/brewarm/brewarm.py
 Type=forking
-ExecStart=/usr/bin/tmux new-session -d /opt/brewarm/brewarm.py
+ExecStart=/usr/bin/tmux new-session -d /opt/brewarm/unix.py
 
 # Give a reasonable amount of time for the server to start up/shut down
 TimeoutSec=300
