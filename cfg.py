@@ -2,7 +2,7 @@
 
 import json
 import copy
-from os import listdir, path
+from os import listdir, path, remove
 
 import w1dev
 
@@ -172,7 +172,7 @@ def init(l, e):
     if path.isfile('.clean_shutdown'):
         config['running'] = False
         store_config()
-        os.remove('.clean_shutdown')
+        remove('.clean_shutdown')
 
     config['brewfiles'] = []
     discover_brews()

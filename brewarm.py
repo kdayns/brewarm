@@ -289,9 +289,12 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
                 else: subprocess.call(['reboot'])
 
             elif cmd == 'kill':
-                os.remove('data/' + nc['name'] + '.csv')
-                for b in config['brewfiles']:
-                    if b == nc['name']: config['brewfiles'].remove(b)
+                try:
+                    for b in cfg.config['brewfiles']:
+                        if b == nc['name']: cfg.config['brewfiles'].remove(b)
+                    os.remove('data/' + nc['name'] + '.csv')
+                except:
+                    return
             self.send_response(200)
         else:
             self.send_response(500, 'no command')

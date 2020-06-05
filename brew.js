@@ -198,7 +198,7 @@ function removeBrew() {
     }
     if (!confirm('really remove ' + n + '?')) return;
 
-    $.post('status', JSON.stringify({ 'command': 'kill', 'name': n }));
+    $.post('command', JSON.stringify({ 'command': 'kill', 'name': n }));
 
     select.remove(select.selectedIndex);
     if (select.length) {
@@ -307,7 +307,7 @@ function saveConfig() {
 }
 function shutdown(reboot) {
     if (!confirm('really shutdown/reboot ?')) return;
-    $.post('status', JSON.stringify({ 'command': reboot ? 'reboot' : 'shutdown' }));
+    $.post('command', JSON.stringify({ 'command': reboot ? 'reboot' : 'shutdown' }));
 }
 function showLastDays() {
     if (!lastDays) return;
