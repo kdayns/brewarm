@@ -29,6 +29,7 @@ class w1d(Pid):
         self.id = _id
         self.name = _id
         self.used = False    # if used in active brew
+        self.ma = []
 
         if _dictstr == None:
             self.enabled = True  # collect temperature, add to new brew

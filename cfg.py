@@ -14,7 +14,7 @@ defconfig = {
     'active'    : '',
     'running'   : False,
     'update'    : 60,
-    'decimate'  : 4,
+    'movingavg' : 3,
     'debug'     : 1,
     'sync'      : 60 * 60,
     'i2c_bus'   : 1,
@@ -136,7 +136,7 @@ def read_config():
 
     config = json.loads(open('config').read())
     if not 'debug' in config: config['debug'] = defconfig['debug']
-    if not 'decimate' in config: config['decimate'] = defconfig['decimate']
+    if not 'movingavg' in config: config['movingavg'] = defconfig['movingavg']
     if not 'sync' in config: config['sync'] = defconfig['sync']
     if not 'i2c_bus' in config: config['i2c_bus'] = defconfig['i2c_bus']
 

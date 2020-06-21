@@ -7,7 +7,7 @@ Inspired by BrewPi but because of it's hardware complexity and slow log renderin
 * uses csv format
 * reading temperature from linux sysfs using kernel driver
 * software fallback using w1 device rw file in sysfs
-* oversampling to increase accuracy
+* moving average temperature reading
 * graphing multiple sensors on web ui using built in web server
 * logging can be paused but only for last session
 * commenting on data points

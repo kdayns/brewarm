@@ -28,21 +28,22 @@ def task_update_temp(s):
         s.curr = None
         return
 
-    s.avg = 0
-    cnt = 0
+    if s.ma is None: s.ma = []
+
     retried = False
-    for i in range(cfg.config['decimate']):
+    for i in range(5):
         if not s.read():
             if retried: break
             retried = True
             continue
-        s.avg += s.curr
-        cnt += 1
-    if not cnt: s.avg = None
+
+    if s.curr is None: s.avg = None
     else:
-        s.avg = round(s.avg / cnt, 3)
-        if s.curr is None: s.avg
-    if cfg.debug: print("data: %s %s %d" % (s.id, s.avg, cnt))
+        s.ma.append(s.curr)
+        if len(s.ma) > cfg.config['movingavg']: s.ma.pop(0)
+        s.avg = round(sum(s.ma) / len(s.ma), 3)
+
+    if cfg.debug: print("data: %s curr:%s avg:%s" % (s.id, s.curr, s.avg))
 
 def sync(toTemp = False):
     print('syncing.. ' + str(toTemp))
@@ -355,7 +356,7 @@ class BrewHTTPHandler(http.server.BaseHTTPRequestHandler):
         if 'update' in nc: config['update'] = int(nc['update'])
         if 'sync' in nc: config['sync'] = int(nc['sync'])
         if 'debug' in nc: config['debug'] = nc['debug']
-        if 'decimate' in nc: config['decimate'] = nc['decimate']
+        if 'movingavg' in nc: config['movingavg'] = nc['movingavg']
         if 'date' in nc:
             try:
                 datetime.datetime.strptime(nc['date'], '%Y/%m/%d %H:%M:%S')
