@@ -112,6 +112,9 @@ class Pid (object):
         self._previous = 0.0
         self.output = self.setpoint
 
+    def dead(self):
+        return abs(self._previous) < 0.5
+
     def step(self, dt=1.0, input=None):
         '''Update the controller with a new input, to get new output.
         The time step "dt" can be given, or is assumed as an arbitrary 1.0.
@@ -124,13 +127,20 @@ class Pid (object):
             self.input = input()
         else:
             self.input = input
+
         err = self.setpoint - self.input
         err *= -1
+
+        self.output = 0.0
+        if not self.dead(): self.output += self.Kp * err
         self._integral += err * dt
         I = self._integral
+        self.output += self.Ki * I
+
         D = (err - self._previous) / dt
-        self.output = self.Kp*err + self.Ki*I + self.Kd*D
+        self._derivative = D
         self._previous = err
+        self.output += self.Kd*D
 
     def bound(self, output):
         '''Ensure the output falls within the current output range.

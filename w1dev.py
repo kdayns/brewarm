@@ -208,12 +208,17 @@ class w1d(Pid):
         if not self.isSwitch(): return False
 
         if t is None or dt == 0:
+            print("t %f dt %f" % (t, dt))
             return False
 
         if dt: self.step(dt / 60, t)
-        heat = self.mode == MODE_HEAT
-        self.write(self.get() < self.setpoint if heat else self.get() > self.setpoint, False)
 
-        print('PID out=%f t=%f I=%f' % (self.get(), t, self._integral))
+        diff = self.get() - self.setpoint
+        if self.mode == MODE_HEAT: diff *= -1
+
+        if not self.dead(): self.write(diff > 0, False)
+
+        print('PID diff=%f out=%f t=%f dt=%f D=%f I=%f'
+                % (diff, self.get(), t, dt, self._derivative, self._integral))
 
         return True
