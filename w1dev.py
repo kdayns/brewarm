@@ -161,12 +161,12 @@ class w1d(Pid):
                 buf0 = ret[0]
                 if (buf0 & 0x0F) != ((~buf0 >> 4) & 0x0F):
                     print ("read switch sw failed")
-                    self.curr = 0
+                    #self.curr = 0
                     return False
                 else: val = buf0
         except:
             print('read switch %s failed: %s ' % (self.id, str(sys.exc_info()[0])))
-            self.curr = 0
+            #self.curr = 0
             return False
 
         self.curr = not (val & IOB_STATUS)

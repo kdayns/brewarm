@@ -104,13 +104,13 @@ def read_all(now, lastRead):
 def thread_temp():
     sensors = cfg.sensors
     lastRead = None
-    now = datetime.datetime.now()
 
     while True:
+        now = datetime.datetime.now()
         beforeRead = now
         read_all(now, lastRead)
-        lastRead = now
         now = datetime.datetime.now()
+        lastRead = now
         print('-- reading sensors took: ' + str(now - beforeRead))
 
         brewarm.task_temp(now)

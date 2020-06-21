@@ -50,7 +50,7 @@ def unuseSensors():
 
 def getSensor(id):
     global sensors
-    print('get sensor: ' + id)
+    #print('get sensor: ' + id)
     acquire()
     for s in sensors:
         if s.id == id:
@@ -61,7 +61,7 @@ def getSensor(id):
 
 def getSensorByName(name):
     global sensors
-    print('get sensor: ' + name)
+    #print('get sensor: ' + name)
     acquire()
     for s in sensors:
         if s.name == name:
