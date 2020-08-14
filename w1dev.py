@@ -208,7 +208,7 @@ class w1d(Pid):
         if not self.isSwitch(): return False
 
         if t is None or dt == 0:
-            print("t %f dt %f" % (t, dt))
+            if t is not None: print("t %f dt %f" % (t, dt))
             return False
 
         if dt: self.step(dt / 60, t)

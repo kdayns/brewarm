@@ -90,7 +90,7 @@ def task_temp(now):
                     # get used sensors
                     csv.seek(0, io.SEEK_SET)
                     l = csv.readline().strip()
-                    if l[:6] != '#date,': raise
+                    if l[:6] != '#date,': raise Exception
                     l = l[6:]
 
                     cfg.unuseSensors()
@@ -119,8 +119,8 @@ def task_temp(now):
                     csv.seek(0, io.SEEK_END)
                     lastActive = config['active']
                 except:
-                    raise
                     print('csv open failed: ' + str(sys.exc_info()[0]))
+                    cfg.config['running'] = False
                     if csv != None:
                         csv.close()
                         csv = None
